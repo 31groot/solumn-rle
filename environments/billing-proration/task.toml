@@ -1,0 +1,23 @@
+schema_version = "1.4"
+artifacts = []
+
+[task]
+name = "solumn/billing-proration"
+version = "1.0.0"
+description = "Fix mid-cycle plan-change proration in a subscription billing package."
+authors = []
+keywords = ["python", "billing"]
+
+[metadata]
+
+[verifier]
+timeout_sec = 600.0
+environment_mode = "shared"
+
+[agent]
+timeout_sec = 600.0
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 900.0
+os = "linux"

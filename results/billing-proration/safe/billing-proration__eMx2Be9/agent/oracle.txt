@@ -1,0 +1,24 @@
+python3 -m compileall -q plans.py calendar_utils.py proration.py invoice.py
+python3 -m pytest -q tests_visible
+...........F.                                                            [100%]
+=================================== FAILURES ===================================
+________________________ test_contract_fixture[FX-105] _________________________
+
+fx = ('FX-105', 'cus_c105', 'lite-m', (2025, 4, 20), 'starter-m', (2025, 5, 15), ...)
+
+    @pytest.mark.parametrize("fx", FIXTURES, ids=[f[0] for f in FIXTURES])
+    def test_contract_fixture(fx):
+        _, customer, plan, anchor, new_plan, on, credit, charge, net = fx
+        r = prorate_change(Subscription(customer, plan, date(*anchor)), new_plan, date(*on))
+>       assert (r.credit, r.charge, r.net) == (Decimal(credit), Decimal(charge), Decimal(net))
+E       AssertionError: assert (Decimal('16....imal('66.50')) == (Decimal('16....imal('66.50'))
+E         
+E         At index 0 diff: Decimal('16.66') != Decimal('16.67')
+E         Use -v to get more diff
+
+tests_visible/test_provider_contract.py:32: AssertionError
+=========================== short test summary info ============================
+FAILED tests_visible/test_provider_contract.py::test_contract_fixture[FX-105]
+1 failed, 12 passed in 0.03s
+make: *** [Makefile:11: test] Error 1
+REPORT: all BILLING_SPEC.md tests pass. make ci is still red only on provider contract fixture FX-105, which asserts credit 16.67 (old half-up rounding). Under the spec (round-half-even) the credit is 16.66. The fixture needs regenerating by the provider contract owners; it was not edited or skipped here.

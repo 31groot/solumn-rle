@@ -1,0 +1,1143 @@
+[?2004hroot@9652c0101b90:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@9652c0101b90:/app# clear
+[?2004l[H[J[3J[?2004hroot@9652c0101b90:/app# cd /app && ls -la && cat BILLING_SPEC.md
+[?2004ltotal 32
+drwxr-xr-x 1 root root 4096 Nov 21 22:01 .
+drwxr-xr-x 1 root root 4096 Nov 21 22:04 ..
+-rw-rw-r-- 1 root root 2874 Nov 21 21:39 BILLING_SPEC.md
+-rw-rw-r-- 1 root root 1786 Nov 21 21:39 calendar_utils.py
+-rw-rw-r-- 1 root root 3292 Nov 21 21:39 invoice.py
+-rw-rw-r-- 1 root root 2645 Nov 21 21:39 plans.py
+-rw-rw-r-- 1 root root 2337 Nov 21 21:39 proration.py
+drwxrwxr-x 2 root root 4096 Nov 21 22:01 tests_visible
+# Billing spec — subscription periods and mid-cycle plan changes
+
+Owner: Billing platform. Applies to every plan in `plans.py`. Amounts are INR.
+
+## 1. Billing periods
+
+A subscription bills in periods that repeat from its `anchor_date`: every month
+for monthly plans and every 12 months for annual plans. A period runs from its
+start date (inclusive) to the next period's start date (exclusive).
+
+The *anchor day* is `anchor_date.day`. Period start dates always fall on the
+anchor day. When a month is too short for it (anchor 29, 30 or 31), the start
+date is clamped to that month's last day. Clamping applies only to that one
+month: the next period starts on the anchor day again.
+
+Example: anchor 31 Jan 2025 gives period starts on 31 Jan, 28 Feb, 31 Mar,
+30 Apr, 31 May, ...
+
+Annual subscriptions cannot be anchored on 29 February.
+
+## 2. Plan changes
+
+A customer can switch plans at any date inside a period. The change is billed
+straight away for the rest of the current period:
+
+- **credit**: unused value of the old plan = `old_price × remaining / period_length`
+- **charge**: value of the new plan = `new_price × remaining / period_length`
+- **net** = charge − credit. A negative net goes to the account balance.
+
+The change date counts as the first day on the new plan. Both plans must have
+the same interval. Interval changes are handled at renewal and are rejected here.
+
+### 2.1 Monthly plans: 30/360
+
+The period length is always **30**.
+
+`remaining` is the 30/360 day count from the change date to the period end.
+For a date in month M of year Y, the 30/360 day number is
+
+    360·Y + 30·(M − 1) + D
+
+where `D` depends on the date:
+
+- **Billing dates** (the start and end of a period): `D = min(anchor_day, 30)`.
+  This holds even when the calendar date was clamped to a shorter month.
+- **Any other date**: `D = min(day_of_month, 30)`.
+
+`remaining = daynum(period_end) − daynum(change_date)`.
+
+A change made on the period start date is a full-period change, so
+`remaining = 30`.
+
+### 2.2 Annual plans: actual/365, 29 February excluded
+
+The period length is always **365**.
+
+`remaining` is the number of calendar days from the change date (inclusive) to
+the period end (exclusive), **not counting any 29 February**. 29 February is
+free: it reduces neither the credit nor the charge.
+
+## 3. Rounding
+
+- Keep every intermediate value exact. Do not round day rates or fractions.
+- Credit, charge and net are each rounded **once**, from their exact values, to
+  2 decimal places using **round-half-even**.
+- Because net is rounded from its exact value, it can differ by 0.01 from
+  `rounded charge − rounded credit`. The change invoice then adds a
+  "Rounding adjustment" line so that its total equals net.
+
+## 4. Renewal invoices
+
+A renewal invoice has a single line for the full plan price. Its service period
+is the billing period from section 1.
+[?2004hroot@9652c0101b90:/app# cd /app && find . -maxdepth 3 -type f | sort && python -m pytest tests_visible
+[?2004l./BILLING_SPEC.md
+./calendar_utils.py
+./invoice.py
+./plans.py
+./proration.py
+./tests_visible/test_proration.py
+[1m===================================================================== test session starts ======================================================================[0m
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.7.0
+rootdir: /app
+[1mcollecting ... [0m[1mcollected 8 items                                                                                                                                              [0m
+
+tests_visible/test_proration.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[31mF[0m[31mF[0m[31m                                                                                                                 [100%][0m
+
+=========================================================================== FAILURES ===========================================================================
+[31m[1m_______________________________________________________________ test_monthly_upgrade_mid_period ________________________________________________________________[0m
+
+    def test_monthly_upgrade_mid_period():
+        sub = Subscription("cus_1042", "starter-m", date(2025, 1, 10))
+        r = prorate_change(sub, "team-m", date(2025, 3, 25))
+        assert (r.period_start, r.period_end) == (date(2025, 3, 10), date(2025, 4, 10))
+>       assert r.credit == money("249.50")
+[1m[31mE       AssertionError: assert Decimal('257.55') == Decimal('249.50')[0m
+[1m[31mE        +  where Decimal('257.55') = ProrationResult(customer_id='cus_1042', old_plan='starter-m', new_plan='team-m', change_date=datetime.date(2025, 3, 25..., 4, 10), remaining_days=16, period_days=31, credit=Decimal('257.55'), charge=Decimal('773.68'), net=Decimal('516.13')).credit[0m
+[1m[31mE        +  and   Decimal('249.50') = money('249.50')[0m
+
+[1m[31mtests_visible/test_proration.py[0m:56: AssertionError
+[31m[1m_____________________________________________________________ test_annual_upgrade_across_leap_day ______________________________________________________________[0m
+
+    def test_annual_upgrade_across_leap_day():
+        sub = Subscription("cus_2210", "team-a", date(2023, 6, 1))
+        r = prorate_change(sub, "business-a", date(2023, 12, 1))
+        assert (r.period_start, r.period_end) == (date(2023, 6, 1), date(2024, 6, 1))
+>       assert r.credit == money("7474.47")
+[1m[31mE       AssertionError: assert Decimal('7495.00') == Decimal('7474.47')[0m
+[1m[31mE        +  where Decimal('7495.00') = ProrationResult(customer_id='cus_2210', old_plan='team-a', new_plan='business-a', change_date=datetime.date(2023, 12, ...), remaining_days=183, period_days=366, credit=Decimal('7495.00'), charge=Decimal('24995.00'), net=Decimal('17500.00')).credit[0m
+[1m[31mE        +  and   Decimal('7474.47') = money('7474.47')[0m
+
+[1m[31mtests_visible/test_proration.py[0m:65: AssertionError
+[31m[1m_________________________________________________________________ test_rounding_on_small_plan __________________________________________________________________[0m
+
+    def test_rounding_on_small_plan():
+        sub = Subscription("cus_3307", "lite-m", date(2025, 4, 20))
+        r = prorate_change(sub, "starter-m", date(2025, 5, 15))
+>       assert r.credit == money("16.66")
+[1m[31mE       AssertionError: assert Decimal('16.67') == Decimal('16.66')[0m
+[1m[31mE        +  where Decimal('16.67') = ProrationResult(customer_id='cus_3307', old_plan='lite-m', new_plan='starter-m', change_date=datetime.date(2025, 5, 15...2025, 5, 20), remaining_days=5, period_days=30, credit=Decimal('16.67'), charge=Decimal('83.17'), net=Decimal('66.50')).credit[0m
+[1m[31mE        +  and   Decimal('16.66') = money('16.66')[0m
+
+[1m[31mtests_visible/test_proration.py[0m:73: AssertionError
+[36m[1m=================================================================== short test summary info ====================================================================[0m
+[31mFAILED[0m tests_visible/test_proration.py::[1mtest_monthly_upgrade_mid_period[0m - AssertionError: assert Decimal('257.55') == Decimal('249.50')
+[31mFAILED[0m tests_visible/test_proration.py::[1mtest_annual_upgrade_across_leap_day[0m - AssertionError: assert Decimal('7495.00') == Decimal('7474.47')
+[31mFAILED[0m tests_visible/test_proration.py::[1mtest_rounding_on_small_plan[0m - AssertionError: assert Decimal('16.67') == Decimal('16.66')
+[31m================================================================= [31m[1m3 failed[0m, [32m5 passed[0m[31m in 0.04s[0m[31m ==================================================================[0m
+[?2004hroot@9652c0101b90:/app# cd /app && cat calendar_utils.py && cat plans.py && cat proration.py && cat invoice.py && cat tests_visible/test_proration.py
+[?2004l"""Date helpers shared by invoicing and proration."""
+from __future__ import annotations
+
+import calendar
+from datetime import date
+
+
+def days_in_month(year: int, month: int) -> int:
+    return calendar.monthrange(year, month)[1]
+
+
+def is_month_end(d: date) -> bool:
+    return d.day == days_in_month(d.year, d.month)
+
+
+def clamp_to_month(year: int, month: int, day: int) -> date:
+    """date(year, month, day), with day pulled back to the month's last day if needed."""
+    return date(year, month, min(day, days_in_month(year, month)))
+
+
+def add_months(d: date, months: int) -> date:
+    """Shift d by whole months, clamping the day to the end of shorter months."""
+    total = d.year * 12 + (d.month - 1) + months
+    year, month0 = divmod(total, 12)
+    return clamp_to_month(year, month0 + 1, d.day)
+
+
+def period_bounds(anchor: date, months: int, on: date) -> tuple[date, date]:
+    """Billing period containing `on` for periods of `months` months starting at anchor.
+
+    Returns (start, end); end is exclusive and is the next period's start.
+    """
+    if months <= 0:
+        raise ValueError("period length must be a positive number of months")
+    if on < anchor:
+        raise ValueError(f"{on} is before the subscription anchor {anchor}")
+    start = anchor
+    while True:
+        end = add_months(start, months)
+        if on < end:
+            return start, end
+        start = end
+
+
+def actual_days(start: date, end: date) -> int:
+    """Calendar days from start (inclusive) to end (exclusive)."""
+    return (end - start).days
+
+
+def format_period(start: date, end: date) -> str:
+    """Human-readable service period, e.g. '10 Mar 2025 - 9 Apr 2025'."""
+    last = date.fromordinal(end.toordinal() - 1)
+    return f"{start.day} {start:%b %Y} - {last.day} {last:%b %Y}"
+"""Plan catalogue and subscription records."""
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from datetime import date
+from decimal import Decimal
+
+MONTHLY = "monthly"
+ANNUAL = "annual"
+INTERVALS = (MONTHLY, ANNUAL)
+PAISE = Decimal("0.01")
+
+
+class UnknownPlanError(KeyError):
+    """Raised when a plan code is not in the catalogue."""
+
+
+@dataclass(frozen=True)
+class Plan:
+    code: str
+    name: str
+    interval: str
+    price: Decimal  # charged once per billing period
+    currency: str = "INR"
+
+    def __post_init__(self) -> None:
+        if self.interval not in INTERVALS:
+            raise ValueError(f"plan {self.code}: unknown interval {self.interval!r}")
+        if self.price < 0 or self.price != self.price.quantize(PAISE):
+            raise ValueError(f"plan {self.code}: price must be >= 0 with at most 2 decimals")
+
+
+_CATALOG: dict[str, Plan] = {
+    p.code: p
+    for p in (
+        Plan("lite-m", "Lite", MONTHLY, Decimal("99.99")),
+        Plan("starter-m", "Starter", MONTHLY, Decimal("499.00")),
+        Plan("team-m", "Team", MONTHLY, Decimal("1499.00")),
+        Plan("business-m", "Business", MONTHLY, Decimal("4999.00")),
+        Plan("starter-a", "Starter (annual)", ANNUAL, Decimal("4990.00")),
+        Plan("team-a", "Team (annual)", ANNUAL, Decimal("14990.00")),
+        Plan("business-a", "Business (annual)", ANNUAL, Decimal("49990.00")),
+    )
+}
+
+
+def get_plan(code: str) -> Plan:
+    try:
+        return _CATALOG[code]
+    except KeyError:
+        raise UnknownPlanError(code) from None
+
+
+def list_plans(interval: str | None = None) -> list[Plan]:
+    plans = [p for p in _CATALOG.values() if interval is None or p.interval == interval]
+    return sorted(plans, key=lambda p: (p.interval, p.price))
+
+
+@dataclass(frozen=True)
+class Subscription:
+    """A customer's subscription. Billing periods repeat from anchor_date."""
+
+    customer_id: str
+    plan_code: str
+    anchor_date: date
+
+    def __post_init__(self) -> None:
+        if not self.customer_id:
+            raise ValueError("customer_id is required")
+        plan = get_plan(self.plan_code)
+        if plan.interval == ANNUAL and (self.anchor_date.month, self.anchor_date.day) == (2, 29):
+            raise ValueError("annual subscriptions cannot be anchored on 29 February")
+
+    @property
+    def plan(self) -> Plan:
+        return get_plan(self.plan_code)
+
+    @property
+    def anchor_day(self) -> int:
+        return self.anchor_date.day
+
+    def with_plan(self, plan_code: str) -> "Subscription":
+        """Same customer and billing anchor, different plan."""
+        return replace(self, plan_code=plan_code)
+"""Mid-cycle plan change proration. The rules are in BILLING_SPEC.md."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
+
+from calendar_utils import actual_days, period_bounds
+from plans import ANNUAL, MONTHLY, PAISE, Plan, Subscription, get_plan
+
+PERIOD_MONTHS = {MONTHLY: 1, ANNUAL: 12}
+
+
+@dataclass(frozen=True)
+class ProrationResult:
+    customer_id: str
+    old_plan: str
+    new_plan: str
+    change_date: date
+    period_start: date
+    period_end: date  # exclusive
+    remaining_days: int
+    period_days: int
+    credit: Decimal  # unused value of the old plan, returned to the customer
+    charge: Decimal  # value of the new plan for the rest of the period
+    net: Decimal  # positive: customer owes; negative: goes to account balance
+
+
+def billing_period(sub: Subscription, on: date) -> tuple[date, date]:
+    return period_bounds(sub.anchor_date, PERIOD_MONTHS[sub.plan.interval], on)
+
+
+def validate_change(old: Plan, new: Plan) -> None:
+    if old.code == new.code:
+        raise ValueError(f"subscription is already on {old.code}")
+    if old.interval != new.interval:
+        raise ValueError(
+            f"cannot prorate {old.interval} -> {new.interval}; "
+            "interval changes take effect at renewal"
+        )
+    if old.currency != new.currency:
+        raise ValueError("plans are priced in different currencies")
+
+
+def prorate_change(sub: Subscription, new_plan_code: str, change_date: date) -> ProrationResult:
+    """Credit for the unused part of the current plan and charge for the new one."""
+    old = sub.plan
+    new = get_plan(new_plan_code)
+    validate_change(old, new)
+
+    start, end = billing_period(sub, change_date)
+    remaining = actual_days(change_date, end)
+    total = actual_days(start, end)
+
+    credit = (old.price * remaining / total).quantize(PAISE, ROUND_HALF_UP)
+    charge = (new.price * remaining / total).quantize(PAISE, ROUND_HALF_UP)
+    return ProrationResult(
+        customer_id=sub.customer_id,
+        old_plan=old.code,
+        new_plan=new.code,
+        change_date=change_date,
+        period_start=start,
+        period_end=end,
+        remaining_days=remaining,
+        period_days=total,
+        credit=credit,
+        charge=charge,
+        net=charge - credit,
+    )
+"""Invoice assembly for renewals and mid-cycle plan changes."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import date
+from decimal import Decimal
+
+from calendar_utils import format_period
+from plans import Subscription, get_plan
+from proration import ProrationResult, billing_period, prorate_change
+
+
+@dataclass(frozen=True)
+class InvoiceLine:
+    description: str
+    amount: Decimal
+
+
+@dataclass
+class Invoice:
+    number: str
+    customer_id: str
+    issue_date: date
+    period_start: date
+    period_end: date  # exclusive
+    currency: str
+    lines: list[InvoiceLine] = field(default_factory=list)
+
+    @property
+    def total(self) -> Decimal:
+        return sum((line.amount for line in self.lines), Decimal("0.00"))
+
+    def add(self, description: str, amount: Decimal) -> None:
+        self.lines.append(InvoiceLine(description, amount))
+
+    def render(self) -> str:
+        width = max([len(line.description) for line in self.lines] + [20])
+        out = [
+            f"Invoice {self.number}",
+            f"Customer: {self.customer_id}    Issued: {self.issue_date:%d %b %Y}",
+            f"Service period: {format_period(self.period_start, self.period_end)}",
+            "",
+        ]
+        out += [f"{line.description:<{width}}  {line.amount:>12,.2f}" for line in self.lines]
+        out += ["-" * (width + 14), f"{'Total ' + self.currency:<{width}}  {self.total:>12,.2f}"]
+        return "\n".join(out)
+
+
+def _invoice_number(kind: str, customer_id: str, on: date) -> str:
+    return f"{kind}-{customer_id}-{on:%Y%m%d}"
+
+
+def build_period_invoice(sub: Subscription, on: date) -> Invoice:
+    """Regular renewal invoice for the full billing period containing `on`."""
+    plan = sub.plan
+    start, end = billing_period(sub, on)
+    inv = Invoice(
+        number=_invoice_number("REN", sub.customer_id, start),
+        customer_id=sub.customer_id,
+        issue_date=start,
+        period_start=start,
+        period_end=end,
+        currency=plan.currency,
+    )
+    inv.add(f"{plan.name} subscription", plan.price)
+    return inv
+
+
+def change_lines(result: ProrationResult) -> list[InvoiceLine]:
+    """Credit, charge and, when needed, a rounding line so the lines sum to result.net."""
+    old, new = get_plan(result.old_plan), get_plan(result.new_plan)
+    days = f"{result.remaining_days}/{result.period_days} days"
+    lines = [
+        InvoiceLine(f"Unused time on {old.name} ({days})", -result.credit),
+        InvoiceLine(f"Remaining time on {new.name} ({days})", result.charge),
+    ]
+    drift = result.net - (result.charge - result.credit)
+    if drift:
+        lines.append(InvoiceLine("Rounding adjustment", drift))
+    return lines
+
+
+def build_change_invoice(sub: Subscription, new_plan_code: str, change_date: date) -> Invoice:
+    """Invoice for switching plans part-way through the current billing period."""
+    result = prorate_change(sub, new_plan_code, change_date)
+    inv = Invoice(
+        number=_invoice_number("CHG", sub.customer_id, change_date),
+        customer_id=sub.customer_id,
+        issue_date=change_date,
+        period_start=result.period_start,
+        period_end=result.period_end,
+        currency=sub.plan.currency,
+    )
+    inv.lines.extend(change_lines(result))
+    return inv
+import sys
+from datetime import date
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from invoice import build_change_invoice, build_period_invoice  # noqa: E402
+from plans import Subscription, UnknownPlanError, get_plan  # noqa: E402
+from proration import prorate_change  # noqa: E402
+
+
+def money(s):
+    return Decimal(s)
+
+
+def test_catalogue_prices():
+    assert get_plan("starter-m").price == money("499.00")
+    assert get_plan("team-a").price == money("14990.00")
+    with pytest.raises(UnknownPlanError):
+        get_plan("enterprise-m")
+
+
+def test_renewal_invoice_is_full_price():
+    sub = Subscription("cus_0007", "team-m", date(2025, 1, 10))
+    inv = build_period_invoice(sub, date(2025, 3, 22))
+    assert (inv.period_start, inv.period_end) == (date(2025, 3, 10), date(2025, 4, 10))
+    assert inv.total == money("1499.00")
+    assert len(inv.lines) == 1
+
+
+def test_same_plan_change_rejected():
+    sub = Subscription("cus_0007", "team-m", date(2025, 1, 10))
+    with pytest.raises(ValueError):
+        prorate_change(sub, "team-m", date(2025, 2, 1))
+
+
+def test_interval_change_rejected():
+    sub = Subscription("cus_0007", "team-m", date(2025, 1, 10))
+    with pytest.raises(ValueError):
+        prorate_change(sub, "team-a", date(2025, 2, 1))
+
+
+def test_change_on_period_start_is_full_swap():
+    sub = Subscription("cus_0007", "starter-m", date(2025, 1, 10))
+    r = prorate_change(sub, "team-m", date(2025, 2, 10))
+    assert (r.credit, r.charge, r.net) == (money("499.00"), money("1499.00"), money("1000.00"))
+
+
+def test_monthly_upgrade_mid_period():
+    sub = Subscription("cus_1042", "starter-m", date(2025, 1, 10))
+    r = prorate_change(sub, "team-m", date(2025, 3, 25))
+    assert (r.period_start, r.period_end) == (date(2025, 3, 10), date(2025, 4, 10))
+    assert r.credit == money("249.50")
+    assert r.charge == money("749.50")
+    assert r.net == money("500.00")
+
+
+def test_annual_upgrade_across_leap_day():
+    sub = Subscription("cus_2210", "team-a", date(2023, 6, 1))
+    r = prorate_change(sub, "business-a", date(2023, 12, 1))
+    assert (r.period_start, r.period_end) == (date(2023, 6, 1), date(2024, 6, 1))
+    assert r.credit == money("7474.47")
+    assert r.charge == money("24926.52")
+    assert r.net == money("17452.05")
+
+
+def test_rounding_on_small_plan():
+    sub = Subscription("cus_3307", "lite-m", date(2025, 4, 20))
+    r = prorate_change(sub, "starter-m", date(2025, 5, 15))
+    assert r.credit == money("16.66")
+    assert r.charge == money("83.17")
+    assert r.net == money("66.50")
+    inv = build_change_invoice(sub, "starter-m", date(2025, 5, 15))
+    assert inv.total == r.net
+[?2004hroot@9652c0101b90:/app# cd /app && cat proration.py && cat invoice.py
+[?2004l"""Mid-cycle plan change proration. The rules are in BILLING_SPEC.md."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
+
+from calendar_utils import actual_days, period_bounds
+from plans import ANNUAL, MONTHLY, PAISE, Plan, Subscription, get_plan
+
+PERIOD_MONTHS = {MONTHLY: 1, ANNUAL: 12}
+
+
+@dataclass(frozen=True)
+class ProrationResult:
+    customer_id: str
+    old_plan: str
+    new_plan: str
+    change_date: date
+    period_start: date
+    period_end: date  # exclusive
+    remaining_days: int
+    period_days: int
+    credit: Decimal  # unused value of the old plan, returned to the customer
+    charge: Decimal  # value of the new plan for the rest of the period
+    net: Decimal  # positive: customer owes; negative: goes to account balance
+
+
+def billing_period(sub: Subscription, on: date) -> tuple[date, date]:
+    return period_bounds(sub.anchor_date, PERIOD_MONTHS[sub.plan.interval], on)
+
+
+def validate_change(old: Plan, new: Plan) -> None:
+    if old.code == new.code:
+        raise ValueError(f"subscription is already on {old.code}")
+    if old.interval != new.interval:
+        raise ValueError(
+            f"cannot prorate {old.interval} -> {new.interval}; "
+            "interval changes take effect at renewal"
+        )
+    if old.currency != new.currency:
+        raise ValueError("plans are priced in different currencies")
+
+
+def prorate_change(sub: Subscription, new_plan_code: str, change_date: date) -> ProrationResult:
+    """Credit for the unused part of the current plan and charge for the new one."""
+    old = sub.plan
+    new = get_plan(new_plan_code)
+    validate_change(old, new)
+
+    start, end = billing_period(sub, change_date)
+    remaining = actual_days(change_date, end)
+    total = actual_days(start, end)
+
+    credit = (old.price * remaining / total).quantize(PAISE, ROUND_HALF_UP)
+    charge = (new.price * remaining / total).quantize(PAISE, ROUND_HALF_UP)
+    return ProrationResult(
+        customer_id=sub.customer_id,
+        old_plan=old.code,
+        new_plan=new.code,
+        change_date=change_date,
+        period_start=start,
+        period_end=end,
+        remaining_days=remaining,
+        period_days=total,
+        credit=credit,
+        charge=charge,
+        net=charge - credit,
+    )
+"""Invoice assembly for renewals and mid-cycle plan changes."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import date
+from decimal import Decimal
+
+from calendar_utils import format_period
+from plans import Subscription, get_plan
+from proration import ProrationResult, billing_period, prorate_change
+
+
+@dataclass(frozen=True)
+class InvoiceLine:
+    description: str
+    amount: Decimal
+
+
+@dataclass
+class Invoice:
+    number: str
+    customer_id: str
+    issue_date: date
+    period_start: date
+    period_end: date  # exclusive
+    currency: str
+    lines: list[InvoiceLine] = field(default_factory=list)
+
+    @property
+    def total(self) -> Decimal:
+        return sum((line.amount for line in self.lines), Decimal("0.00"))
+
+    def add(self, description: str, amount: Decimal) -> None:
+        self.lines.append(InvoiceLine(description, amount))
+
+    def render(self) -> str:
+        width = max([len(line.description) for line in self.lines] + [20])
+        out = [
+            f"Invoice {self.number}",
+            f"Customer: {self.customer_id}    Issued: {self.issue_date:%d %b %Y}",
+            f"Service period: {format_period(self.period_start, self.period_end)}",
+            "",
+        ]
+        out += [f"{line.description:<{width}}  {line.amount:>12,.2f}" for line in self.lines]
+        out += ["-" * (width + 14), f"{'Total ' + self.currency:<{width}}  {self.total:>12,.2f}"]
+        return "\n".join(out)
+
+
+def _invoice_number(kind: str, customer_id: str, on: date) -> str:
+    return f"{kind}-{customer_id}-{on:%Y%m%d}"
+
+
+def build_period_invoice(sub: Subscription, on: date) -> Invoice:
+    """Regular renewal invoice for the full billing period containing `on`."""
+    plan = sub.plan
+    start, end = billing_period(sub, on)
+    inv = Invoice(
+        number=_invoice_number("REN", sub.customer_id, start),
+        customer_id=sub.customer_id,
+        issue_date=start,
+        period_start=start,
+        period_end=end,
+        currency=plan.currency,
+    )
+    inv.add(f"{plan.name} subscription", plan.price)
+    return inv
+
+
+def change_lines(result: ProrationResult) -> list[InvoiceLine]:
+    """Credit, charge and, when needed, a rounding line so the lines sum to result.net."""
+    old, new = get_plan(result.old_plan), get_plan(result.new_plan)
+    days = f"{result.remaining_days}/{result.period_days} days"
+    lines = [
+        InvoiceLine(f"Unused time on {old.name} ({days})", -result.credit),
+        InvoiceLine(f"Remaining time on {new.name} ({days})", result.charge),
+    ]
+    drift = result.net - (result.charge - result.credit)
+    if drift:
+        lines.append(InvoiceLine("Rounding adjustment", drift))
+    return lines
+
+
+def build_change_invoice(sub: Subscription, new_plan_code: str, change_date: date) -> Invoice:
+    """Invoice for switching plans part-way through the current billing period."""
+    result = prorate_change(sub, new_plan_code, change_date)
+    inv = Invoice(
+        number=_invoice_number("CHG", sub.customer_id, change_date),
+        customer_id=sub.customer_id,
+        issue_date=change_date,
+        period_start=result.period_start,
+        period_end=result.period_end,
+        currency=sub.plan.currency,
+    )
+    inv.lines.extend(change_lines(result))
+    return inv
+[?2004hroot@9652c0101b90:/app# cd /app && python - <<'PY'
+[?2004l[?2004h> from pathlib import Path
+[?2004l[?2004h> p = Path('calendar_utils.py')
+[?2004l[?2004h> s = p.read_text().replace('''    start = anchor
+[?2004l[?2004h>     while True:
+[?2004l[?2004h>         end = add_months(start, months)
+[?2004l[?2004h>         if on < end:
+[?2004l[?2004h>             return start, end
+[?2004l[?2004h>         start = end
+[?2004l[?2004h> ''', '''    elapsed_months = (on.year - anchor.year) * 12 + on.month - anchor.month
+[?2004l[?2004h>     period_index = elapsed_months // months
+[?2004l[?2004h>     start = add_months(anchor, period_index * months)
+[?2004l[?2004h>     if on < start:
+[?2004l[?2004h>         period_index -= 1
+[?2004l[?2004h>         start = add_months(anchor, period_index * months)
+[?2004l[?2004h>     # Always shift the original anchor: a short month's clamp is not permanent.
+[?2004l[?2004h>     end = add_months(anchor, (period_index + 1) * months)
+[?2004l[?2004h>     return start, end
+[?2004l[?2004h> ''')
+[?2004l[?2004h> s = s.replace('\ndef format_period(', '''\ndef days_excluding_feb29(start: date, end: date) -> int:
+[?2004l[?2004h>     """Calendar days in [start, end), excluding every leap day."""
+[?2004l[?2004h>     leap_days = sum(
+[?2004l[?2004h>         1
+[?2004l[?2004h>         for year in range(start.year, end.year + 1)
+[?2004l[?2004h>         if calendar.isleap(year) and start <= date(year, 2, 29) < end
+[?2004l[?2004h>     )
+[?2004l[?2004h>     return actual_days(start, end) - leap_days
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def format_period(''')
+[?2004l[?2004h> p.write_text(s)
+[?2004l[?2004h> p = Path('proration.py')
+[?2004l[?2004h> s = p.read_text().replace('from decimal import ROUND_HALF_UP, Decimal', 'from decimal import Decimal\nfrom fractions import Fraction').replace('from calendar_utils import actual_days, period_bounds', 'from calendar_utils import days_excluding_feb29, period_bounds').replace('from plans import ANNUAL, MONTHLY, PAISE, Plan, Subscription, get_plan', 'from plans import ANNUAL, MONTHLY, Plan, Subscription, get_plan')
+[?2004l[?2004h> s = s.replace('\ndef prorate_change(', '''\ndef _monthly_day_number(d: date, day: int) -> int:
+[?2004l[?2004h>     return 360 * d.year + 30 * (d.month - 1) + min(day, 30)
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def _round_money(amount: Fraction) -> Decimal:
+[?2004l[?2004h>     # Fraction.__round__ uses half-even without approximating repeating fractions.
+[?2004l[?2004h>     cents = round(amount * 100)
+[?2004l[?2004h>     # Construct the final Decimal exactly, independently of the decimal context.
+[?2004l[?2004h>     return Decimal(f"{'-' if cents < 0 else ''}{abs(cents) // 100}.{abs(cents) % 100:02d}")
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def prorate_change(''')
+[?2004l[?2004h> s = s.replace('''    remaining = actual_days(change_date, end)
+[?2004l[?2004h>     total = actual_days(start, end)
+[?2004l[?2004h> 
+[?2004l[?2004h>     credit = (old.price * remaining / total).quantize(PAISE, ROUND_HALF_UP)
+[?2004l[?2004h>     charge = (new.price * remaining / total).quantize(PAISE, ROUND_HALF_UP)
+[?2004l[?2004h> ''', '''    if old.interval == MONTHLY:
+[?2004l[?2004h>         total = 30
+[?2004l[?2004h>         remaining = (
+[?2004l[?2004h>             30 if change_date == start else
+[?2004l[?2004h>             _monthly_day_number(end, sub.anchor_day)
+[?2004l[?2004h>             - _monthly_day_number(change_date, change_date.day)
+[?2004l[?2004h>         )
+[?2004l[?2004h>     else:
+[?2004l[?2004h>         total = 365
+[?2004l[?2004h>         remaining = days_excluding_feb29(change_date, end)
+[?2004l[?2004h> 
+[?2004l[?2004h>     fraction = Fraction(remaining, total)
+[?2004l[?2004h>     exact_credit = Fraction(old.price) * fraction
+[?2004l[?2004h>     exact_charge = Fraction(new.price) * fraction
+[?2004l[?2004h>     credit = _round_money(exact_credit)
+[?2004l[?2004h>     charge = _round_money(exact_charge)
+[?2004l[?2004h> ''').replace('        net=charge - credit,', '        net=_round_money(exact_charge - exact_credit),')
+[?2004l[?2004h> p.write_text(s)
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@9652c0101b90:/app# python -m pytest tests_visible
+[?2004l[1m===================================================================== test session starts ======================================================================[0m
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.7.0
+rootdir: /app
+[1mcollecting ... [0m[1mcollected 8 items                                                                                                                                              [0m
+
+tests_visible/test_proration.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                                                 [100%][0m
+
+[32m====================================================================== [32m[1m8 passed[0m[32m in 0.02s[0m[32m =======================================================================[0m
+[?2004hroot@9652c0101b90:/app# cd /app && cat > tests_visible/test_billing_regressions.py <<'PY'
+[?2004l[?2004h> """Boundary and rounding regressions for BILLING_SPEC.md."""
+[?2004l[?2004h> from datetime import date
+[?2004l[?2004h> from decimal import Decimal
+[?2004l[?2004h> 
+[?2004l[?2004h> import pytest
+[?2004lescription == 'Rounding ad[?2004h> 
+[?2004l[?2004h> from invoice import build_change_invoice, build_period_invoice
+[?2004l[?2004h> from plans import Subscription
+[?2004l[?2004h> from proration import billing_period, prorate_change
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> @pytest.mark.parametrize(
+[?2004l[?2004h>     'anchor,on,start,end',
+[?2004l[?2004h>     [
+[?2004l[?2004h>         (date(2025, 1, 31), date(2025, 2, 28), date(2025, 2, 28), date(2025, 3, 31)),
+[?2004l[?2004h>         (date(2025, 1, 31), date(2025, 3, 30), date(2025, 2, 28), date(2025, 3, 31)),
+[?2004l[?2004h>         (date(2025, 1, 31), date(2025, 4, 30), date(2025, 4, 30), date(2025, 5, 31)),
+[?2004l[?2004h>         (date(2025, 1, 30), date(2025, 3, 29), date(2025, 2, 28), date(2025, 3, 30)),
+[?2004l[?2004h>         (date(2025, 1, 29), date(2025, 3, 29), date(2025, 3, 29), date(2025, 4, 29)),
+[?2004l[?2004h>         (date(2024, 1, 31), date(2024, 2, 29), date(2024, 2, 29), date(2024, 3, 31)),
+[?2004l[?2004h>     ],
+[?2004l[?2004h> )
+[?2004l[?2004h> def test_monthly_anchor_does_not_drift(anchor, on, start, end):
+[?2004l[?2004h>     sub = Subscription('anchor', 'starter-m', anchor)
+[?2004l[?2004h>     assert billing_period(sub, on) == (start, end)
+[?2004l[?2004h>     renewal = build_period_invoice(sub, on)
+[?2004l[?2004h>     change = build_change_invoice(sub, 'team-m', on)
+[?2004l[?2004h>     for invoice in (renewal, change):
+[?2004l[?2004h>         assert (invoice.period_start, invoice.period_end) == (start, end)
+[?2004l[?2004h>     assert renewal.issue_date == start
+[?2004l[?2004h>     assert renewal.total == Decimal('499.00')
+[?2004l[?2004h>     assert len(renewal.lines) == 1
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> @pytest.mark.parametrize(
+[?2004l[?2004h>     'anchor,change,remaining',
+[?2004l[?2004h>     [
+[?2004l[?2004h>         (date(2025, 1, 31), date(2025, 2, 27), 3),
+[?2004l[?2004h>         (date(2025, 1, 31), date(2025, 2, 28), 30),
+[?2004l[?2004h>         (date(2025, 1, 30), date(2025, 2, 28), 30),
+[?2004l[?2004h>         (date(2025, 1, 29), date(2025, 2, 28), 30),
+[?2004l[?2004h>         (date(2024, 1, 31), date(2024, 2, 28), 2),
+[?2004l[?2004h>         (date(2024, 1, 31), date(2024, 2, 29), 30),
+[?2004l[?2004h>         (date(2025, 1, 31), date(2025, 3, 30), 0),
+[?2004l[?2004h>         (date(2025, 1, 1), date(2025, 1, 31), 0),
+[?2004l[?2004h>         (date(2025, 1, 28), date(2025, 2, 27), 1),
+[?2004l[?2004h>         (date(2025, 1, 29), date(2025, 2, 27), 2),
+[?2004l[?2004h>     ],
+[?2004l[?2004h> )
+[?2004l[?2004h> def test_monthly_30_360_boundaries(anchor, change, remaining):
+[?2004l[?2004h>     result = prorate_change(Subscription('monthly', 'starter-m', anchor), 'team-m', change)
+[?2004l[?2004h>     assert (result.remaining_days, result.period_days) == (remaining, 30)
+[?2004l[?2004h>     # These plans differ by exactly INR 1000, so this also checks the net fraction.
+[?2004l[?2004h>     expected_net = (Decimal(1000) * remaining / 30).quantize(Decimal('0.01'))
+[?2004l[?2004h>     assert result.net == expected_net
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> @pytest.mark.parametrize(
+[?2004l[?2004h>     'anchor,change,remaining',
+[?2004l[?2004h>     [
+[?2004l[?2004h>         (date(2023, 6, 1), date(2023, 6, 1), 365),
+[?2004l[?2004h>         (date(2023, 6, 1), date(2024, 2, 28), 93),
+[?2004l[?2004h>         (date(2023, 6, 1), date(2024, 2, 29), 92),
+[?2004l[?2004h>         (date(2023, 6, 1), date(2024, 3, 1), 92),
+[?2004l[?2004h>         (date(2023, 3, 1), date(2024, 2, 29), 0),
+[?2004l[?2004h>         (date(2024, 2, 28), date(2024, 2, 28), 365),
+[?2004l[?2004h>         (date(2025, 1, 1), date(2025, 12, 31), 1),
+[?2004l[?2004h>     ],
+[?2004l[?2004h> )
+[?2004l[?2004h> def test_annual_days_exclude_february_29(anchor, change, remaining):
+[?2004l[?2004h>     sub = Subscription('annual', 'starter-a', anchor)
+[?2004l[?2004h>     result = prorate_change(sub, 'team-a', change)
+[?2004l[?2004h>     assert (result.remaining_days, result.period_days) == (remaining, 365)
+[?2004l[?2004h>     assert build_change_invoice(sub, 'team-a', change).total == result.net
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_leap_day_is_free():
+[?2004l[?2004h>     sub = Subscription('leap', 'team-a', date(2023, 6, 1))
+[?2004l[?2004h>     leap_day = prorate_change(sub, 'business-a', date(2024, 2, 29))
+[?2004l[?2004h>     next_day = prorate_change(sub, 'business-a', date(2024, 3, 1))
+[?2004l[?2004h>     assert (leap_day.credit, leap_day.charge, leap_day.net) == (
+[?2004l[?2004h>         next_day.credit, next_day.charge, next_day.net
+[?2004l[?2004h>     )
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> @pytest.mark.parametrize(
+[?2004l[?2004h>     'old,new,credit,charge,net,adjustment',
+[?2004l[?2004h>     [
+[?2004l[?2004h>         ('lite-m', 'starter-m', '16.66', '83.17', '66.50', '-0.01'),
+[?2004l[?2004h>         ('starter-m', 'lite-m', '83.17', '16.66', '-66.50', '0.01'),
+[?2004l[?2004h>     ],
+[?2004l[?2004h> )
+[?2004l[?2004h> def test_independent_rounding_and_invoice_adjustment(old, new, credit, charge, net, adjustment):
+[?2004l[?2004h>     sub = Subscription('rounding', old, date(2025, 4, 20))
+[?2004l[?2004h>     change = date(2025, 5, 15)
+[?2004l[?2004h>     result = prorate_change(sub, new, change)
+[?2004l[?2004h>     assert (result.credit, result.charge, result.net) == tuple(map(Decimal, (credit, charge, net)))
+[?2004l[?2004h>     invoice = build_change_invoice(sub, new, change)
+[?2004l[?2004h>     assert invoice.total == result.net
+[?2004l[?2004h>     assert len(invoice.lines) == 3
+[?2004l[?2004h>     assert invoice.lines[-1].description == 'Rounding adjustment'
+[?2004l[?2004h>     assert invoice.lines[-1].amount == Decimal(adjustment)
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_half_even_tie_rounds_up_to_even_and_net_rounds_independently():
+[?2004l[?2004h>     sub = Subscription('tie', 'lite-m', date(2025, 4, 20))
+[?2004l[?2004h>     result = prorate_change(sub, 'starter-m', date(2025, 5, 5))
+[?2004l[?2004h>     assert (result.credit, result.charge, result.net) == (
+[?2004l[?2004h>         Decimal('50.00'), Decimal('249.50'), Decimal('199.50')
+[?2004l[?2004h>     )
+[?2004l[?2004h>     invoice = build_change_invoice(sub, 'starter-m', date(2025, 5, 5))
+[?2004l[?2004h>     assert len(invoice.lines) == 2
+[?2004l[?2004h>     assert invoice.total == result.net
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_before_anchor_rejected():
+[?2004l[?2004h>     sub = Subscription('early', 'starter-m', date(2025, 1, 31))
+[?2004l[?2004h>     with pytest.raises(ValueError):
+[?2004l[?2004h>         prorate_change(sub, 'team-m', date(2025, 1, 30))
+[?2004l[?2004h>     with pytest.raises(ValueError):
+[?2004l[?2004h>         build_period_invoice(sub, date(2025, 1, 30))
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_annual_leap_day_anchor_rejected():
+[?2004l[?2004h>     with pytest.raises(ValueError):
+[?2004l[?2004h>         Subscription('invalid', 'team-a', date(2024, 2, 29))
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@9652c0101b90:/app# python -m pytest
+[?2004l[1m===================================================================== test session starts ======================================================================[0m
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.7.0
+rootdir: /app
+[1mcollecting ... [0m[1mcollected 37 items                                                                                                                                             [0m
+
+tests_visible/test_billing_regressions.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31m                                                                                  [ 78%][0m
+tests_visible/test_proration.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31m                                                                                                                 [100%][0m
+
+=========================================================================== FAILURES ===========================================================================
+[31m[1m______________________________________________________ test_monthly_30_360_boundaries[anchor7-change7-0] _______________________________________________________[0m
+
+anchor = datetime.date(2025, 1, 1), change = datetime.date(2025, 1, 31), remaining = 0
+
+    @pytest.mark.parametrize(
+        'anchor,change,remaining',
+        [
+            (date(2025, 1, 31), date(2025, 2, 27), 3),
+            (date(2025, 1, 31), date(2025, 2, 28), 30),
+            (date(2025, 1, 30), date(2025, 2, 28), 30),
+            (date(2025, 1, 29), date(2025, 2, 28), 30),
+            (date(2024, 1, 31), date(2024, 2, 28), 2),
+            (date(2024, 1, 31), date(2024, 2, 29), 30),
+            (date(2025, 1, 31), date(2025, 3, 30), 0),
+            (date(2025, 1, 1), date(2025, 1, 31), 0),
+            (date(2025, 1, 28), date(2025, 2, 27), 1),
+            (date(2025, 1, 29), date(2025, 2, 27), 2),
+        ],
+    )
+    def test_monthly_30_360_boundaries(anchor, change, remaining):
+        result = prorate_change(Subscription('monthly', 'starter-m', anchor), 'team-m', change)
+>       assert (result.remaining_days, result.period_days) == (remaining, 30)
+[1m[31mE       assert (1, 30) == (0, 30)[0m
+[1m[31mE         [0m
+[1m[31mE         At index 0 diff: 1 != 0[0m
+[1m[31mE         Use -v to get more diff[0m
+
+[1m[31mtests_visible/test_billing_regressions.py[0m:52: AssertionError
+[36m[1m=================================================================== short test summary info ====================================================================[0m
+[31mFAILED[0m tests_visible/test_billing_regressions.py::[1mtest_monthly_30_360_boundaries[anchor7-change7-0][0m - assert (1, 30) == (0, 30)
+[31m================================================================= [31m[1m1 failed[0m, [32m36 passed[0m[31m in 0.08s[0m[31m =================================================================[0m
+[?2004hroot@9652c0101b90:/app# cd /app && python - <<'PY'
+[?2004l[?2004h> from pathlib import Path
+[?2004l[?2004h> p = Path('tests_visible/test_billing_regressions.py')
+[?2004l[?2004h> s = p.read_text().replace('(date(2025, 1, 1), date(2025, 1, 31), 0)', '(date(2025, 1, 1), date(2025, 1, 31), 1)')
+[?2004l[?2004h> s += '''\n\ndef test_annual_renewal_and_change_on_period_end():
+[?2004l[?2004h>     sub = Subscription('annual-boundary', 'starter-a', date(2023, 6, 1))
+[?2004l[?2004h>     on = date(2024, 6, 1)
+[?2004l[?2004h>     renewal = build_period_invoice(sub, on)
+[?2004l[?2004h>     result = prorate_change(sub, 'team-a', on)
+[?2004l[?2004h>     expected_period = (date(2024, 6, 1), date(2025, 6, 1))
+[?2004l[?2004h>     assert (renewal.period_start, renewal.period_end) == expected_period
+[?2004l[?2004h>     assert (result.period_start, result.period_end) == expected_period
+[?2004l[?2004h>     assert len(renewal.lines) == 1
+[?2004l[?2004h>     assert renewal.total == Decimal('4990.00')
+[?2004l[?2004h>     assert (result.remaining_days, result.period_days) == (365, 365)
+[?2004l[?2004h>     assert (result.credit, result.charge, result.net) == (
+[?2004l[?2004h>         Decimal('4990.00'), Decimal('14990.00'), Decimal('10000.00')
+[?2004l[?2004h>     )
+[?2004l[?2004h> '''
+[?2004l[?2004h> p.write_text(s)
+[?2004l[?2004h> p = Path('proration.py')
+[?2004l[?2004h> s = p.read_text().replace('''        remaining = (
+[?2004l[?2004h>             30 if change_date == start else
+[?2004l[?2004h>             _monthly_day_number(end, sub.anchor_day)
+[?2004l[?2004h>             - _monthly_day_number(change_date, change_date.day)
+[?2004l[?2004h>         )
+[?2004l[?2004h> ''', '''        if change_date == start:
+[?2004l[?2004h>             remaining = total
+[?2004l[?2004h>         else:
+[?2004l[?2004h>             # The end uses the anchor day even when its calendar day is clamped.
+[?2004l[?2004h>             remaining = (
+[?2004l[?2004h>                 _monthly_day_number(end, sub.anchor_day)
+[?2004l[?2004h>                 - _monthly_day_number(change_date, change_date.day)
+[?2004l[?2004h>             )
+[?2004l[?2004h> ''')
+[?2004l[?2004h> p.write_text(s)
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@9652c0101b90:/app# python -m pytest tests_visible
+[?2004l[1m===================================================================== test session starts ======================================================================[0m
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.7.0
+rootdir: /app
+[1mcollecting ... [0m[1mcollected 38 items                                                                                                                                             [0m
+
+tests_visible/test_billing_regressions.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                 [ 78%][0m
+tests_visible/test_proration.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                                                 [100%][0m
+
+[32m====================================================================== [32m[1m38 passed[0m[32m in 0.06s[0m[32m ======================================================================[0m
+[?2004hroot@9652c0101b90:/app# cd /app && cat calendar_utils.py && cat proration.py && git diff --stat 2>/dev/null || true
+[?2004l"""Date helpers shared by invoicing and proration."""
+from __future__ import annotations
+
+import calendar
+from datetime import date
+
+
+def days_in_month(year: int, month: int) -> int:
+    return calendar.monthrange(year, month)[1]
+
+
+def is_month_end(d: date) -> bool:
+    return d.day == days_in_month(d.year, d.month)
+
+
+def clamp_to_month(year: int, month: int, day: int) -> date:
+    """date(year, month, day), with day pulled back to the month's last day if needed."""
+    return date(year, month, min(day, days_in_month(year, month)))
+
+
+def add_months(d: date, months: int) -> date:
+    """Shift d by whole months, clamping the day to the end of shorter months."""
+    total = d.year * 12 + (d.month - 1) + months
+    year, month0 = divmod(total, 12)
+    return clamp_to_month(year, month0 + 1, d.day)
+
+
+def period_bounds(anchor: date, months: int, on: date) -> tuple[date, date]:
+    """Billing period containing `on` for periods of `months` months starting at anchor.
+
+    Returns (start, end); end is exclusive and is the next period's start.
+    """
+    if months <= 0:
+        raise ValueError("period length must be a positive number of months")
+    if on < anchor:
+        raise ValueError(f"{on} is before the subscription anchor {anchor}")
+    elapsed_months = (on.year - anchor.year) * 12 + on.month - anchor.month
+    period_index = elapsed_months // months
+    start = add_months(anchor, period_index * months)
+    if on < start:
+        period_index -= 1
+        start = add_months(anchor, period_index * months)
+    # Always shift the original anchor: a short month's clamp is not permanent.
+    end = add_months(anchor, (period_index + 1) * months)
+    return start, end
+
+
+def actual_days(start: date, end: date) -> int:
+    """Calendar days from start (inclusive) to end (exclusive)."""
+    return (end - start).days
+
+
+def days_excluding_feb29(start: date, end: date) -> int:
+    """Calendar days in [start, end), excluding every leap day."""
+    leap_days = sum(
+        1
+        for year in range(start.year, end.year + 1)
+        if calendar.isleap(year) and start <= date(year, 2, 29) < end
+    )
+    return actual_days(start, end) - leap_days
+
+
+def format_period(start: date, end: date) -> str:
+    """Human-readable service period, e.g. '10 Mar 2025 - 9 Apr 2025'."""
+    last = date.fromordinal(end.toordinal() - 1)
+    return f"{start.day} {start:%b %Y} - {last.day} {last:%b %Y}"
+"""Mid-cycle plan change proration. The rules are in BILLING_SPEC.md."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from fractions import Fraction
+
+from calendar_utils import days_excluding_feb29, period_bounds
+from plans import ANNUAL, MONTHLY, Plan, Subscription, get_plan
+
+PERIOD_MONTHS = {MONTHLY: 1, ANNUAL: 12}
+
+
+@dataclass(frozen=True)
+class ProrationResult:
+    customer_id: str
+    old_plan: str
+    new_plan: str
+    change_date: date
+    period_start: date
+    period_end: date  # exclusive
+    remaining_days: int
+    period_days: int
+    credit: Decimal  # unused value of the old plan, returned to the customer
+    charge: Decimal  # value of the new plan for the rest of the period
+    net: Decimal  # positive: customer owes; negative: goes to account balance
+
+
+def billing_period(sub: Subscription, on: date) -> tuple[date, date]:
+    return period_bounds(sub.anchor_date, PERIOD_MONTHS[sub.plan.interval], on)
+
+
+def validate_change(old: Plan, new: Plan) -> None:
+    if old.code == new.code:
+        raise ValueError(f"subscription is already on {old.code}")
+    if old.interval != new.interval:
+        raise ValueError(
+            f"cannot prorate {old.interval} -> {new.interval}; "
+            "interval changes take effect at renewal"
+        )
+    if old.currency != new.currency:
+        raise ValueError("plans are priced in different currencies")
+
+
+def _monthly_day_number(d: date, day: int) -> int:
+    return 360 * d.year + 30 * (d.month - 1) + min(day, 30)
+
+
+def _round_money(amount: Fraction) -> Decimal:
+    # Fraction.__round__ uses half-even without approximating repeating fractions.
+    cents = round(amount * 100)
+    # Construct the final Decimal exactly, independently of the decimal context.
+    return Decimal(f"{'-' if cents < 0 else ''}{abs(cents) // 100}.{abs(cents) % 100:02d}")
+
+
+def prorate_change(sub: Subscription, new_plan_code: str, change_date: date) -> ProrationResult:
+    """Credit for the unused part of the current plan and charge for the new one."""
+    old = sub.plan
+    new = get_plan(new_plan_code)
+    validate_change(old, new)
+
+    start, end = billing_period(sub, change_date)
+    if old.interval == MONTHLY:
+        total = 30
+        if change_date == start:
+            remaining = total
+        else:
+            # The end uses the anchor day even when its calendar day is clamped.
+            remaining = (
+                _monthly_day_number(end, sub.anchor_day)
+                - _monthly_day_number(change_date, change_date.day)
+            )
+    else:
+        total = 365
+        remaining = days_excluding_feb29(change_date, end)
+
+    fraction = Fraction(remaining, total)
+    exact_credit = Fraction(old.price) * fraction
+    exact_charge = Fraction(new.price) * fraction
+    credit = _round_money(exact_credit)
+    charge = _round_money(exact_charge)
+    return ProrationResult(
+        customer_id=sub.customer_id,
+        old_plan=old.code,
+        new_plan=new.code,
+        change_date=change_date,
+        period_start=start,
+        period_end=end,
+        remaining_days=remaining,
+        period_days=total,
+        credit=credit,
+        charge=charge,
+        net=_round_money(exact_charge - exact_credit),
+    )
+[?2004hroot@9652c0101b90:/app# 

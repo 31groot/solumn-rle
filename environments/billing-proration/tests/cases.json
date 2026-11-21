@@ -1,0 +1,1671 @@
+{
+ "functional": [
+  {
+   "id": "m_feb_mid",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5101",
+    "plan": "team-m",
+    "anchor": "2025-01-10",
+    "new": "business-m",
+    "date": "2025-02-01"
+   },
+   "expect": {
+    "credit": "449.70",
+    "charge": "1499.70",
+    "net": "1050.00",
+    "period_start": "2025-01-10",
+    "period_end": "2025-02-10",
+    "new_period_start": "2025-01-10",
+    "new_period_end": "2025-02-10"
+   }
+  },
+  {
+   "id": "m_on_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5102",
+    "plan": "starter-m",
+    "anchor": "2025-03-05",
+    "new": "team-m",
+    "date": "2025-03-05"
+   },
+   "expect": {
+    "credit": "499.00",
+    "charge": "1499.00",
+    "net": "1000.00",
+    "period_start": "2025-03-05",
+    "period_end": "2025-04-05",
+    "new_period_start": "2025-03-05",
+    "new_period_end": "2025-04-05"
+   }
+  },
+  {
+   "id": "m_last_day",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5103",
+    "plan": "starter-m",
+    "anchor": "2025-03-05",
+    "new": "team-m",
+    "date": "2025-04-04"
+   },
+   "expect": {
+    "credit": "16.63",
+    "charge": "49.97",
+    "net": "33.33",
+    "period_start": "2025-03-05",
+    "period_end": "2025-04-05",
+    "new_period_start": "2025-03-05",
+    "new_period_end": "2025-04-05"
+   }
+  },
+  {
+   "id": "m_downgrade",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5104",
+    "plan": "business-m",
+    "anchor": "2025-05-15",
+    "new": "starter-m",
+    "date": "2025-06-01"
+   },
+   "expect": {
+    "credit": "2332.87",
+    "charge": "232.87",
+    "net": "-2100.00",
+    "period_start": "2025-05-15",
+    "period_end": "2025-06-15",
+    "new_period_start": "2025-05-15",
+    "new_period_end": "2025-06-15"
+   }
+  },
+  {
+   "id": "m_feb_30360",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5105",
+    "plan": "team-m",
+    "anchor": "2025-02-10",
+    "new": "business-m",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "credit": "999.33",
+    "charge": "3332.67",
+    "net": "2333.33",
+    "period_start": "2025-02-10",
+    "period_end": "2025-03-10",
+    "new_period_start": "2025-02-10",
+    "new_period_end": "2025-03-10"
+   }
+  },
+  {
+   "id": "m_leap_feb",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5106",
+    "plan": "starter-m",
+    "anchor": "2024-01-15",
+    "new": "business-m",
+    "date": "2024-02-20"
+   },
+   "expect": {
+    "credit": "415.83",
+    "charge": "4165.83",
+    "net": "3750.00",
+    "period_start": "2024-02-15",
+    "period_end": "2024-03-15",
+    "new_period_start": "2024-02-15",
+    "new_period_end": "2024-03-15"
+   }
+  },
+  {
+   "id": "m_day31_change",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5107",
+    "plan": "starter-m",
+    "anchor": "2025-06-12",
+    "new": "team-m",
+    "date": "2025-07-31"
+   },
+   "expect": {
+    "credit": "199.60",
+    "charge": "599.60",
+    "net": "400.00",
+    "period_start": "2025-07-12",
+    "period_end": "2025-08-12",
+    "new_period_start": "2025-07-12",
+    "new_period_end": "2025-08-12"
+   }
+  },
+  {
+   "id": "clamp31_feb",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5201",
+    "plan": "starter-m",
+    "anchor": "2025-01-31",
+    "new": "team-m",
+    "date": "2025-02-15"
+   },
+   "expect": {
+    "credit": "249.50",
+    "charge": "749.50",
+    "net": "500.00",
+    "period_start": "2025-01-31",
+    "period_end": "2025-02-28",
+    "new_period_start": "2025-01-31",
+    "new_period_end": "2025-02-28"
+   }
+  },
+  {
+   "id": "clamp31_mar_nodrift",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5202",
+    "plan": "starter-m",
+    "anchor": "2025-01-31",
+    "new": "team-m",
+    "date": "2025-03-10"
+   },
+   "expect": {
+    "credit": "332.67",
+    "charge": "999.33",
+    "net": "666.67",
+    "period_start": "2025-02-28",
+    "period_end": "2025-03-31",
+    "new_period_start": "2025-02-28",
+    "new_period_end": "2025-03-31"
+   }
+  },
+  {
+   "id": "clamp31_apr30_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5203",
+    "plan": "team-m",
+    "anchor": "2025-01-31",
+    "new": "business-m",
+    "date": "2025-04-30"
+   },
+   "expect": {
+    "credit": "1499.00",
+    "charge": "4999.00",
+    "net": "3500.00",
+    "period_start": "2025-04-30",
+    "period_end": "2025-05-31",
+    "new_period_start": "2025-04-30",
+    "new_period_end": "2025-05-31"
+   }
+  },
+  {
+   "id": "clamp31_may",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5204",
+    "plan": "team-m",
+    "anchor": "2025-01-31",
+    "new": "starter-m",
+    "date": "2025-05-15"
+   },
+   "expect": {
+    "credit": "749.50",
+    "charge": "249.50",
+    "net": "-500.00",
+    "period_start": "2025-04-30",
+    "period_end": "2025-05-31",
+    "new_period_start": "2025-04-30",
+    "new_period_end": "2025-05-31"
+   }
+  },
+  {
+   "id": "clamp30_leap_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5205",
+    "plan": "starter-m",
+    "anchor": "2024-01-30",
+    "new": "team-m",
+    "date": "2024-02-29"
+   },
+   "expect": {
+    "credit": "499.00",
+    "charge": "1499.00",
+    "net": "1000.00",
+    "period_start": "2024-02-29",
+    "period_end": "2024-03-30",
+    "new_period_start": "2024-02-29",
+    "new_period_end": "2024-03-30"
+   }
+  },
+  {
+   "id": "clamp30_leap_mar",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5206",
+    "plan": "starter-m",
+    "anchor": "2024-01-30",
+    "new": "team-m",
+    "date": "2024-03-01"
+   },
+   "expect": {
+    "credit": "482.37",
+    "charge": "1449.03",
+    "net": "966.67",
+    "period_start": "2024-02-29",
+    "period_end": "2024-03-30",
+    "new_period_start": "2024-02-29",
+    "new_period_end": "2024-03-30"
+   }
+  },
+  {
+   "id": "clamp29_feb_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5207",
+    "plan": "lite-m",
+    "anchor": "2025-01-29",
+    "new": "team-m",
+    "date": "2025-02-28"
+   },
+   "expect": {
+    "credit": "99.99",
+    "charge": "1499.00",
+    "net": "1399.01",
+    "period_start": "2025-02-28",
+    "period_end": "2025-03-29",
+    "new_period_start": "2025-02-28",
+    "new_period_end": "2025-03-29"
+   }
+  },
+  {
+   "id": "clamp29_mar",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5208",
+    "plan": "lite-m",
+    "anchor": "2025-01-29",
+    "new": "team-m",
+    "date": "2025-03-01"
+   },
+   "expect": {
+    "credit": "93.32",
+    "charge": "1399.07",
+    "net": "1305.74",
+    "period_start": "2025-02-28",
+    "period_end": "2025-03-29",
+    "new_period_start": "2025-02-28",
+    "new_period_end": "2025-03-29"
+   }
+  },
+  {
+   "id": "clamp31_dec",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5209",
+    "plan": "business-m",
+    "anchor": "2025-08-31",
+    "new": "team-m",
+    "date": "2025-12-01"
+   },
+   "expect": {
+    "credit": "4832.37",
+    "charge": "1449.03",
+    "net": "-3383.33",
+    "period_start": "2025-11-30",
+    "period_end": "2025-12-31",
+    "new_period_start": "2025-11-30",
+    "new_period_end": "2025-12-31"
+   }
+  },
+  {
+   "id": "clamp30_day31",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5210",
+    "plan": "starter-m",
+    "anchor": "2025-01-30",
+    "new": "business-m",
+    "date": "2025-01-31"
+   },
+   "expect": {
+    "credit": "499.00",
+    "charge": "4999.00",
+    "net": "4500.00",
+    "period_start": "2025-01-30",
+    "period_end": "2025-02-28",
+    "new_period_start": "2025-01-30",
+    "new_period_end": "2025-02-28"
+   }
+  },
+  {
+   "id": "round_lite5",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5301",
+    "plan": "lite-m",
+    "anchor": "2025-09-03",
+    "new": "starter-m",
+    "date": "2025-09-28"
+   },
+   "expect": {
+    "credit": "16.66",
+    "charge": "83.17",
+    "net": "66.50",
+    "period_start": "2025-09-03",
+    "period_end": "2025-10-03",
+    "new_period_start": "2025-09-03",
+    "new_period_end": "2025-10-03"
+   }
+  },
+  {
+   "id": "round_lite25",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5302",
+    "plan": "lite-m",
+    "anchor": "2025-06-12",
+    "new": "team-m",
+    "date": "2025-06-17"
+   },
+   "expect": {
+    "credit": "83.32",
+    "charge": "1249.17",
+    "net": "1165.84",
+    "period_start": "2025-06-12",
+    "period_end": "2025-07-12",
+    "new_period_start": "2025-06-12",
+    "new_period_end": "2025-07-12"
+   }
+  },
+  {
+   "id": "round_down_neg",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5303",
+    "plan": "team-m",
+    "anchor": "2025-03-01",
+    "new": "lite-m",
+    "date": "2025-03-16"
+   },
+   "expect": {
+    "credit": "749.50",
+    "charge": "50.00",
+    "net": "-699.50",
+    "period_start": "2025-03-01",
+    "period_end": "2025-04-01",
+    "new_period_start": "2025-03-01",
+    "new_period_end": "2025-04-01"
+   }
+  },
+  {
+   "id": "near_lite5_b",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5304",
+    "plan": "lite-m",
+    "anchor": "2025-07-14",
+    "new": "starter-m",
+    "date": "2025-08-09"
+   },
+   "expect": {
+    "credit": "16.66",
+    "charge": "83.17",
+    "net": "66.50",
+    "period_start": "2025-07-14",
+    "period_end": "2025-08-14",
+    "new_period_start": "2025-07-14",
+    "new_period_end": "2025-08-14"
+   }
+  },
+  {
+   "id": "near_lite5_c",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5305",
+    "plan": "lite-m",
+    "anchor": "2024-11-02",
+    "new": "starter-m",
+    "date": "2024-11-27"
+   },
+   "expect": {
+    "credit": "16.66",
+    "charge": "83.17",
+    "net": "66.50",
+    "period_start": "2024-11-02",
+    "period_end": "2024-12-02",
+    "new_period_start": "2024-11-02",
+    "new_period_end": "2024-12-02"
+   }
+  },
+  {
+   "id": "near_lite5_d",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5306",
+    "plan": "lite-m",
+    "anchor": "2025-04-20",
+    "new": "team-m",
+    "date": "2025-05-15"
+   },
+   "expect": {
+    "credit": "16.66",
+    "charge": "249.83",
+    "net": "233.17",
+    "period_start": "2025-04-20",
+    "period_end": "2025-05-20",
+    "new_period_start": "2025-04-20",
+    "new_period_end": "2025-05-20"
+   }
+  },
+  {
+   "id": "a_no_leap",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5401",
+    "plan": "starter-a",
+    "anchor": "2025-04-01",
+    "new": "team-a",
+    "date": "2025-10-01"
+   },
+   "expect": {
+    "credit": "2488.16",
+    "charge": "7474.47",
+    "net": "4986.30",
+    "period_start": "2025-04-01",
+    "period_end": "2026-04-01",
+    "new_period_start": "2025-04-01",
+    "new_period_end": "2026-04-01"
+   }
+  },
+  {
+   "id": "a_feb_in_range",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5402",
+    "plan": "starter-a",
+    "anchor": "2023-03-15",
+    "new": "business-a",
+    "date": "2024-02-10"
+   },
+   "expect": {
+    "credit": "451.15",
+    "charge": "4519.64",
+    "net": "4068.49",
+    "period_start": "2023-03-15",
+    "period_end": "2024-03-15",
+    "new_period_start": "2023-03-15",
+    "new_period_end": "2024-03-15"
+   }
+  },
+  {
+   "id": "a_change_on_feb29",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5403",
+    "plan": "team-a",
+    "anchor": "2023-09-01",
+    "new": "business-a",
+    "date": "2024-02-29"
+   },
+   "expect": {
+    "credit": "7556.60",
+    "charge": "25200.44",
+    "net": "17643.84",
+    "period_start": "2023-09-01",
+    "period_end": "2024-09-01",
+    "new_period_start": "2023-09-01",
+    "new_period_end": "2024-09-01"
+   }
+  },
+  {
+   "id": "a_change_mar1",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5404",
+    "plan": "team-a",
+    "anchor": "2023-09-01",
+    "new": "business-a",
+    "date": "2024-03-01"
+   },
+   "expect": {
+    "credit": "7556.60",
+    "charge": "25200.44",
+    "net": "17643.84",
+    "period_start": "2023-09-01",
+    "period_end": "2024-09-01",
+    "new_period_start": "2023-09-01",
+    "new_period_end": "2024-09-01"
+   }
+  },
+  {
+   "id": "a_anchor31",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5405",
+    "plan": "starter-a",
+    "anchor": "2024-03-31",
+    "new": "team-a",
+    "date": "2025-01-15"
+   },
+   "expect": {
+    "credit": "1025.34",
+    "charge": "3080.14",
+    "net": "2054.79",
+    "period_start": "2024-03-31",
+    "period_end": "2025-03-31",
+    "new_period_start": "2024-03-31",
+    "new_period_end": "2025-03-31"
+   }
+  },
+  {
+   "id": "a_on_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5406",
+    "plan": "team-a",
+    "anchor": "2024-05-20",
+    "new": "starter-a",
+    "date": "2025-05-20"
+   },
+   "expect": {
+    "credit": "14990.00",
+    "charge": "4990.00",
+    "net": "-10000.00",
+    "period_start": "2025-05-20",
+    "period_end": "2026-05-20",
+    "new_period_start": "2025-05-20",
+    "new_period_end": "2026-05-20"
+   }
+  },
+  {
+   "id": "a_downgrade",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5407",
+    "plan": "business-a",
+    "anchor": "2024-07-20",
+    "new": "starter-a",
+    "date": "2025-01-05"
+   },
+   "expect": {
+    "credit": "26843.95",
+    "charge": "2679.56",
+    "net": "-24164.38",
+    "period_start": "2024-07-20",
+    "period_end": "2025-07-20",
+    "new_period_start": "2024-07-20",
+    "new_period_end": "2025-07-20"
+   }
+  },
+  {
+   "id": "a_leap_year_no_feb",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5408",
+    "plan": "starter-a",
+    "anchor": "2024-03-10",
+    "new": "team-a",
+    "date": "2024-12-31"
+   },
+   "expect": {
+    "credit": "943.32",
+    "charge": "2833.73",
+    "net": "1890.41",
+    "period_start": "2024-03-10",
+    "period_end": "2025-03-10",
+    "new_period_start": "2024-03-10",
+    "new_period_end": "2025-03-10"
+   }
+  },
+  {
+   "id": "a_last_day",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5409",
+    "plan": "team-a",
+    "anchor": "2023-01-31",
+    "new": "business-a",
+    "date": "2024-01-30"
+   },
+   "expect": {
+    "credit": "41.07",
+    "charge": "136.96",
+    "net": "95.89",
+    "period_start": "2023-01-31",
+    "period_end": "2024-01-31",
+    "new_period_start": "2023-01-31",
+    "new_period_end": "2024-01-31"
+   }
+  },
+  {
+   "id": "a_feb29_anchor_2026",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5410",
+    "plan": "team-a",
+    "anchor": "2024-02-29",
+    "new": "business-a",
+    "date": "2026-06-01"
+   },
+   "expect": {
+    "credit": "11170.63",
+    "charge": "37252.82",
+    "net": "26082.19",
+    "period_start": "2026-02-28",
+    "period_end": "2027-02-28",
+    "new_period_start": "2026-02-28",
+    "new_period_end": "2027-02-28"
+   }
+  },
+  {
+   "id": "a_feb29_anchor_nodrift",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5411",
+    "plan": "starter-a",
+    "anchor": "2024-02-29",
+    "new": "team-a",
+    "date": "2028-01-10"
+   },
+   "expect": {
+    "credit": "683.56",
+    "charge": "2053.42",
+    "net": "1369.86",
+    "period_start": "2027-02-28",
+    "period_end": "2028-02-29",
+    "new_period_start": "2027-02-28",
+    "new_period_end": "2028-02-29"
+   }
+  },
+  {
+   "id": "a_feb29_anchor_leap_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5412",
+    "plan": "starter-a",
+    "anchor": "2024-02-29",
+    "new": "team-a",
+    "date": "2028-02-29"
+   },
+   "expect": {
+    "credit": "4990.00",
+    "charge": "14990.00",
+    "net": "10000.00",
+    "period_start": "2028-02-29",
+    "period_end": "2029-02-28",
+    "new_period_start": "2028-02-29",
+    "new_period_end": "2029-02-28"
+   }
+  },
+  {
+   "id": "cap_binds",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5701",
+    "plan": "team-m",
+    "anchor": "2025-03-01",
+    "new": "business-m",
+    "date": "2025-03-04",
+    "paid": "500.00"
+   },
+   "expect": {
+    "credit": "500.00",
+    "charge": "4499.10",
+    "net": "3999.10",
+    "period_start": "2025-03-01",
+    "period_end": "2025-04-01",
+    "new_period_start": "2025-03-01",
+    "new_period_end": "2025-04-01"
+   }
+  },
+  {
+   "id": "cap_not_binding",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5702",
+    "plan": "team-m",
+    "anchor": "2025-03-01",
+    "new": "business-m",
+    "date": "2025-03-04",
+    "paid": "1400.00"
+   },
+   "expect": {
+    "credit": "1349.10",
+    "charge": "4499.10",
+    "net": "3150.00",
+    "period_start": "2025-03-01",
+    "period_end": "2025-04-01",
+    "new_period_start": "2025-03-01",
+    "new_period_end": "2025-04-01"
+   }
+  },
+  {
+   "id": "cap_free_trial",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5703",
+    "plan": "starter-m",
+    "anchor": "2025-03-01",
+    "new": "team-m",
+    "date": "2025-03-20",
+    "paid": "0.00"
+   },
+   "expect": {
+    "credit": "0.00",
+    "charge": "549.63",
+    "net": "549.63",
+    "period_start": "2025-03-01",
+    "period_end": "2025-04-01",
+    "new_period_start": "2025-03-01",
+    "new_period_end": "2025-04-01"
+   }
+  },
+  {
+   "id": "cap_before_net",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5704",
+    "plan": "team-a",
+    "anchor": "2023-06-01",
+    "new": "business-a",
+    "date": "2023-12-01",
+    "paid": "7474.46"
+   },
+   "expect": {
+    "credit": "7474.46",
+    "charge": "24926.52",
+    "net": "17452.06",
+    "period_start": "2023-06-01",
+    "period_end": "2024-06-01",
+    "new_period_start": "2023-06-01",
+    "new_period_end": "2024-06-01"
+   }
+  },
+  {
+   "id": "cap_downgrade",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5705",
+    "plan": "business-m",
+    "anchor": "2025-04-12",
+    "new": "lite-m",
+    "date": "2025-04-20",
+    "paid": "999.99"
+   },
+   "expect": {
+    "credit": "999.99",
+    "charge": "73.33",
+    "net": "-926.66",
+    "period_start": "2025-04-12",
+    "period_end": "2025-05-12",
+    "new_period_start": "2025-04-12",
+    "new_period_end": "2025-05-12"
+   }
+  },
+  {
+   "id": "m2a_on_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5801",
+    "plan": "starter-m",
+    "anchor": "2025-01-10",
+    "new": "team-a",
+    "date": "2025-03-10"
+   },
+   "expect": {
+    "credit": "499.00",
+    "charge": "14990.00",
+    "net": "14491.00",
+    "period_start": "2025-03-10",
+    "period_end": "2025-04-10",
+    "new_period_start": "2025-03-10",
+    "new_period_end": "2026-03-10"
+   }
+  },
+  {
+   "id": "m2a_clamped_period",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5802",
+    "plan": "starter-m",
+    "anchor": "2025-01-31",
+    "new": "starter-a",
+    "date": "2025-03-15"
+   },
+   "expect": {
+    "credit": "249.50",
+    "charge": "4990.00",
+    "net": "4740.50",
+    "period_start": "2025-02-28",
+    "period_end": "2025-03-31",
+    "new_period_start": "2025-03-15",
+    "new_period_end": "2026-03-15"
+   }
+  },
+  {
+   "id": "m2a_on_feb29",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5803",
+    "plan": "team-m",
+    "anchor": "2024-01-15",
+    "new": "team-a",
+    "date": "2024-02-29"
+   },
+   "expect": {
+    "credit": "799.47",
+    "charge": "14990.00",
+    "net": "14190.53",
+    "period_start": "2024-02-15",
+    "period_end": "2024-03-15",
+    "new_period_start": "2024-02-29",
+    "new_period_end": "2025-02-28"
+   }
+  },
+  {
+   "id": "a2m_new_anchor31",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5804",
+    "plan": "starter-a",
+    "anchor": "2024-06-10",
+    "new": "starter-m",
+    "date": "2025-01-31"
+   },
+   "expect": {
+    "credit": "1777.26",
+    "charge": "499.00",
+    "net": "-1278.26",
+    "period_start": "2024-06-10",
+    "period_end": "2025-06-10",
+    "new_period_start": "2025-01-31",
+    "new_period_end": "2025-02-28"
+   }
+  },
+  {
+   "id": "a2m_leap_inside",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5805",
+    "plan": "team-a",
+    "anchor": "2023-09-01",
+    "new": "business-m",
+    "date": "2024-01-15"
+   },
+   "expect": {
+    "credit": "9404.68",
+    "charge": "4999.00",
+    "net": "-4405.68",
+    "period_start": "2023-09-01",
+    "period_end": "2024-09-01",
+    "new_period_start": "2024-01-15",
+    "new_period_end": "2024-02-15"
+   }
+  },
+  {
+   "id": "a2m_feb29_anchor_start",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5806",
+    "plan": "team-a",
+    "anchor": "2024-02-29",
+    "new": "team-m",
+    "date": "2028-02-29"
+   },
+   "expect": {
+    "credit": "14990.00",
+    "charge": "1499.00",
+    "net": "-13491.00",
+    "period_start": "2028-02-29",
+    "period_end": "2029-02-28",
+    "new_period_start": "2028-02-29",
+    "new_period_end": "2028-03-29"
+   }
+  },
+  {
+   "id": "a2m_feb29_anchor_mid",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5807",
+    "plan": "business-a",
+    "anchor": "2024-02-29",
+    "new": "lite-m",
+    "date": "2027-12-31"
+   },
+   "expect": {
+    "credit": "8217.53",
+    "charge": "99.99",
+    "net": "-8117.54",
+    "period_start": "2027-02-28",
+    "period_end": "2028-02-29",
+    "new_period_start": "2027-12-31",
+    "new_period_end": "2028-01-31"
+   }
+  },
+  {
+   "id": "a2m_cap",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_5808",
+    "plan": "business-a",
+    "anchor": "2024-07-01",
+    "new": "starter-m",
+    "date": "2025-01-20",
+    "paid": "20000.00"
+   },
+   "expect": {
+    "credit": "20000.00",
+    "charge": "499.00",
+    "net": "-19501.00",
+    "period_start": "2024-07-01",
+    "period_end": "2025-07-01",
+    "new_period_start": "2025-01-20",
+    "new_period_end": "2025-02-20"
+   }
+  },
+  {
+   "id": "inv_round_adjust",
+   "case": {
+    "op": "change_invoice",
+    "customer": "cus_5501",
+    "plan": "lite-m",
+    "anchor": "2025-06-12",
+    "new": "team-m",
+    "date": "2025-06-17"
+   },
+   "expect": {
+    "total": "1165.84",
+    "lines_sum": "1165.84",
+    "period_start": "2025-06-12",
+    "period_end": "2025-07-12"
+   }
+  },
+  {
+   "id": "inv_clamp31",
+   "case": {
+    "op": "change_invoice",
+    "customer": "cus_5502",
+    "plan": "starter-m",
+    "anchor": "2025-01-31",
+    "new": "team-m",
+    "date": "2025-03-10"
+   },
+   "expect": {
+    "total": "666.67",
+    "lines_sum": "666.67",
+    "period_start": "2025-02-28",
+    "period_end": "2025-03-31"
+   }
+  },
+  {
+   "id": "inv_annual_leap",
+   "case": {
+    "op": "change_invoice",
+    "customer": "cus_5503",
+    "plan": "team-a",
+    "anchor": "2023-09-01",
+    "new": "business-a",
+    "date": "2024-02-29"
+   },
+   "expect": {
+    "total": "17643.84",
+    "lines_sum": "17643.84",
+    "period_start": "2023-09-01",
+    "period_end": "2024-09-01"
+   }
+  },
+  {
+   "id": "inv_m2a_period",
+   "case": {
+    "op": "change_invoice",
+    "customer": "cus_5504",
+    "plan": "starter-m",
+    "anchor": "2025-01-31",
+    "new": "starter-a",
+    "date": "2025-03-15"
+   },
+   "expect": {
+    "total": "4740.50",
+    "lines_sum": "4740.50",
+    "period_start": "2025-03-15",
+    "period_end": "2026-03-15"
+   }
+  },
+  {
+   "id": "inv_a2m_feb29",
+   "case": {
+    "op": "change_invoice",
+    "customer": "cus_5505",
+    "plan": "business-a",
+    "anchor": "2024-02-29",
+    "new": "lite-m",
+    "date": "2027-12-31"
+   },
+   "expect": {
+    "total": "-8117.54",
+    "lines_sum": "-8117.54",
+    "period_start": "2027-12-31",
+    "period_end": "2028-01-31"
+   }
+  },
+  {
+   "id": "inv_cap",
+   "case": {
+    "op": "change_invoice",
+    "customer": "cus_5506",
+    "plan": "team-a",
+    "anchor": "2023-06-01",
+    "new": "business-a",
+    "date": "2023-12-01",
+    "paid": "7474.46"
+   },
+   "expect": {
+    "total": "17452.06",
+    "lines_sum": "17452.06",
+    "period_start": "2023-06-01",
+    "period_end": "2024-06-01"
+   }
+  },
+  {
+   "id": "renewal_clamp31",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_5601",
+    "plan": "team-m",
+    "anchor": "2025-01-31",
+    "date": "2025-03-10"
+   },
+   "expect": {
+    "total": "1499.00",
+    "n_lines": 1,
+    "period_start": "2025-02-28",
+    "period_end": "2025-03-31"
+   }
+  },
+  {
+   "id": "renewal_feb29_annual",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_5602",
+    "plan": "team-a",
+    "anchor": "2024-02-29",
+    "date": "2028-03-05"
+   },
+   "expect": {
+    "total": "14990.00",
+    "n_lines": 1,
+    "period_start": "2028-02-29",
+    "period_end": "2029-02-28"
+   }
+  }
+ ],
+ "regression": [
+  {
+   "id": "price_lite-m",
+   "case": {
+    "op": "plan_price",
+    "plan": "lite-m"
+   },
+   "expect": {
+    "price": "99.99"
+   }
+  },
+  {
+   "id": "price_starter-m",
+   "case": {
+    "op": "plan_price",
+    "plan": "starter-m"
+   },
+   "expect": {
+    "price": "499.00"
+   }
+  },
+  {
+   "id": "price_team-m",
+   "case": {
+    "op": "plan_price",
+    "plan": "team-m"
+   },
+   "expect": {
+    "price": "1499.00"
+   }
+  },
+  {
+   "id": "price_business-m",
+   "case": {
+    "op": "plan_price",
+    "plan": "business-m"
+   },
+   "expect": {
+    "price": "4999.00"
+   }
+  },
+  {
+   "id": "price_starter-a",
+   "case": {
+    "op": "plan_price",
+    "plan": "starter-a"
+   },
+   "expect": {
+    "price": "4990.00"
+   }
+  },
+  {
+   "id": "price_team-a",
+   "case": {
+    "op": "plan_price",
+    "plan": "team-a"
+   },
+   "expect": {
+    "price": "14990.00"
+   }
+  },
+  {
+   "id": "price_business-a",
+   "case": {
+    "op": "plan_price",
+    "plan": "business-a"
+   },
+   "expect": {
+    "price": "49990.00"
+   }
+  },
+  {
+   "id": "renewal_lite-m",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_7001",
+    "plan": "lite-m",
+    "anchor": "2024-01-12",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "total": "99.99",
+    "n_lines": 1,
+    "period_start": "2025-02-12",
+    "period_end": "2025-03-12"
+   }
+  },
+  {
+   "id": "renewal_starter-m",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_7001",
+    "plan": "starter-m",
+    "anchor": "2024-01-12",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "total": "499.00",
+    "n_lines": 1,
+    "period_start": "2025-02-12",
+    "period_end": "2025-03-12"
+   }
+  },
+  {
+   "id": "renewal_team-m",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_7001",
+    "plan": "team-m",
+    "anchor": "2024-01-12",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "total": "1499.00",
+    "n_lines": 1,
+    "period_start": "2025-02-12",
+    "period_end": "2025-03-12"
+   }
+  },
+  {
+   "id": "renewal_business-m",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_7001",
+    "plan": "business-m",
+    "anchor": "2024-01-12",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "total": "4999.00",
+    "n_lines": 1,
+    "period_start": "2025-02-12",
+    "period_end": "2025-03-12"
+   }
+  },
+  {
+   "id": "renewal_starter-a",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_7001",
+    "plan": "starter-a",
+    "anchor": "2023-05-03",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "total": "4990.00",
+    "n_lines": 1,
+    "period_start": "2024-05-03",
+    "period_end": "2025-05-03"
+   }
+  },
+  {
+   "id": "renewal_team-a",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_7001",
+    "plan": "team-a",
+    "anchor": "2023-05-03",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "total": "14990.00",
+    "n_lines": 1,
+    "period_start": "2024-05-03",
+    "period_end": "2025-05-03"
+   }
+  },
+  {
+   "id": "renewal_business-a",
+   "case": {
+    "op": "period_invoice",
+    "customer": "cus_7001",
+    "plan": "business-a",
+    "anchor": "2023-05-03",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "total": "49990.00",
+    "n_lines": 1,
+    "period_start": "2024-05-03",
+    "period_end": "2025-05-03"
+   }
+  },
+  {
+   "id": "reject_same_plan",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_7002",
+    "plan": "team-m",
+    "anchor": "2025-01-10",
+    "new": "team-m",
+    "date": "2025-02-01",
+    "expect_error": true
+   },
+   "expect": {
+    "error": "ValueError"
+   }
+  },
+  {
+   "id": "reject_unknown_plan",
+   "case": {
+    "op": "plan_price",
+    "plan": "enterprise-m",
+    "expect_error": true
+   },
+   "expect": {
+    "error": "KeyError"
+   }
+  },
+  {
+   "id": "full_period_swap",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_7004",
+    "plan": "starter-m",
+    "anchor": "2025-01-10",
+    "new": "business-m",
+    "date": "2025-04-10"
+   },
+   "expect": {
+    "credit": "499.00",
+    "charge": "4999.00",
+    "net": "4500.00",
+    "period_start": "2025-04-10",
+    "period_end": "2025-05-10",
+    "new_period_start": "2025-04-10",
+    "new_period_end": "2025-05-10"
+   }
+  },
+  {
+   "id": "annual_full_period_swap",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_7005",
+    "plan": "team-a",
+    "anchor": "2023-05-03",
+    "new": "business-a",
+    "date": "2024-05-03"
+   },
+   "expect": {
+    "credit": "14990.00",
+    "charge": "49990.00",
+    "net": "35000.00",
+    "period_start": "2024-05-03",
+    "period_end": "2025-05-03",
+    "new_period_start": "2024-05-03",
+    "new_period_end": "2025-05-03"
+   }
+  }
+ ],
+ "visible": [
+  {
+   "id": "visible_month_end_anchor",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_1042",
+    "plan": "lite-m",
+    "anchor": "2025-01-31",
+    "new": "starter-m",
+    "date": "2025-03-25"
+   },
+   "expect": {
+    "credit": "16.66",
+    "charge": "83.17",
+    "net": "66.50",
+    "period_start": "2025-02-28",
+    "period_end": "2025-03-31",
+    "new_period_start": "2025-02-28",
+    "new_period_end": "2025-03-31"
+   },
+   "perturbations": [
+    {
+     "kind": "different customer_id",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_5042",
+      "plan": "lite-m",
+      "anchor": "2025-01-31",
+      "new": "starter-m",
+      "date": "2025-03-25"
+     },
+     "expect": {
+      "credit": "16.66",
+      "charge": "83.17",
+      "net": "66.50",
+      "period_start": "2025-02-28",
+      "period_end": "2025-03-31",
+      "new_period_start": "2025-02-28",
+      "new_period_end": "2025-03-31"
+     }
+    },
+    {
+     "kind": "anchor and change date shifted by one billing cycle",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_1042",
+      "plan": "lite-m",
+      "anchor": "2025-03-31",
+      "new": "starter-m",
+      "date": "2025-04-25"
+     },
+     "expect": {
+      "credit": "16.66",
+      "charge": "83.17",
+      "net": "66.50",
+      "period_start": "2025-03-31",
+      "period_end": "2025-04-30",
+      "new_period_start": "2025-03-31",
+      "new_period_end": "2025-04-30"
+     }
+    }
+   ]
+  },
+  {
+   "id": "visible_promo_cap",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_2210",
+    "plan": "team-a",
+    "anchor": "2023-06-01",
+    "new": "business-a",
+    "date": "2023-12-01",
+    "paid": "7000.00"
+   },
+   "expect": {
+    "credit": "7000.00",
+    "charge": "24926.52",
+    "net": "17926.52",
+    "period_start": "2023-06-01",
+    "period_end": "2024-06-01",
+    "new_period_start": "2023-06-01",
+    "new_period_end": "2024-06-01"
+   },
+   "perturbations": [
+    {
+     "kind": "different customer_id",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_6210",
+      "plan": "team-a",
+      "anchor": "2023-06-01",
+      "new": "business-a",
+      "date": "2023-12-01",
+      "paid": "7000.00"
+     },
+     "expect": {
+      "credit": "7000.00",
+      "charge": "24926.52",
+      "net": "17926.52",
+      "period_start": "2023-06-01",
+      "period_end": "2024-06-01",
+      "new_period_start": "2023-06-01",
+      "new_period_end": "2024-06-01"
+     }
+    },
+    {
+     "kind": "anchor and change date shifted by one billing cycle",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_2210",
+      "plan": "team-a",
+      "anchor": "2024-06-01",
+      "new": "business-a",
+      "date": "2024-12-01",
+      "paid": "7000.00"
+     },
+     "expect": {
+      "credit": "7000.00",
+      "charge": "24926.52",
+      "net": "17926.52",
+      "period_start": "2024-06-01",
+      "period_end": "2025-06-01",
+      "new_period_start": "2024-06-01",
+      "new_period_end": "2025-06-01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "visible_monthly_to_annual",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_3307",
+    "plan": "starter-m",
+    "anchor": "2025-01-10",
+    "new": "starter-a",
+    "date": "2025-02-20"
+   },
+   "expect": {
+    "credit": "332.67",
+    "charge": "4990.00",
+    "net": "4657.33",
+    "period_start": "2025-02-10",
+    "period_end": "2025-03-10",
+    "new_period_start": "2025-02-20",
+    "new_period_end": "2026-02-20"
+   },
+   "perturbations": [
+    {
+     "kind": "different customer_id",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_7307",
+      "plan": "starter-m",
+      "anchor": "2025-01-10",
+      "new": "starter-a",
+      "date": "2025-02-20"
+     },
+     "expect": {
+      "credit": "332.67",
+      "charge": "4990.00",
+      "net": "4657.33",
+      "period_start": "2025-02-10",
+      "period_end": "2025-03-10",
+      "new_period_start": "2025-02-20",
+      "new_period_end": "2026-02-20"
+     }
+    },
+    {
+     "kind": "anchor and change date shifted by one billing cycle",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_3307",
+      "plan": "starter-m",
+      "anchor": "2025-02-10",
+      "new": "starter-a",
+      "date": "2025-03-20"
+     },
+     "expect": {
+      "credit": "332.67",
+      "charge": "4990.00",
+      "net": "4657.33",
+      "period_start": "2025-03-10",
+      "period_end": "2025-04-10",
+      "new_period_start": "2025-03-20",
+      "new_period_end": "2026-03-20"
+     }
+    }
+   ]
+  },
+  {
+   "id": "visible_leap_annual_to_monthly",
+   "case": {
+    "op": "prorate",
+    "customer": "cus_4419",
+    "plan": "team-a",
+    "anchor": "2024-02-29",
+    "new": "team-m",
+    "date": "2027-10-31"
+   },
+   "expect": {
+    "credit": "4969.29",
+    "charge": "1499.00",
+    "net": "-3470.29",
+    "period_start": "2027-02-28",
+    "period_end": "2028-02-29",
+    "new_period_start": "2027-10-31",
+    "new_period_end": "2027-11-30"
+   },
+   "perturbations": [
+    {
+     "kind": "different customer_id",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_8419",
+      "plan": "team-a",
+      "anchor": "2024-02-29",
+      "new": "team-m",
+      "date": "2027-10-31"
+     },
+     "expect": {
+      "credit": "4969.29",
+      "charge": "1499.00",
+      "net": "-3470.29",
+      "period_start": "2027-02-28",
+      "period_end": "2028-02-29",
+      "new_period_start": "2027-10-31",
+      "new_period_end": "2027-11-30"
+     }
+    },
+    {
+     "kind": "anchor and change date shifted by four annual cycles (keeps the 29 Feb anchor)",
+     "case": {
+      "op": "prorate",
+      "customer": "cus_4419",
+      "plan": "team-a",
+      "anchor": "2028-02-29",
+      "new": "team-m",
+      "date": "2031-10-31"
+     },
+     "expect": {
+      "credit": "4969.29",
+      "charge": "1499.00",
+      "net": "-3470.29",
+      "period_start": "2031-02-28",
+      "period_end": "2032-02-29",
+      "new_period_start": "2031-10-31",
+      "new_period_end": "2031-11-30"
+     }
+    }
+   ]
+  }
+ ],
+ "near_contract": [
+  "round_lite5",
+  "round_lite25",
+  "round_down_neg",
+  "near_lite5_b",
+  "near_lite5_c",
+  "near_lite5_d"
+ ],
+ "contract": {
+  "id": "FX-105",
+  "case": {
+   "op": "prorate",
+   "customer": "cus_c105",
+   "plan": "lite-m",
+   "anchor": "2025-04-20",
+   "new": "starter-m",
+   "date": "2025-05-15"
+  },
+  "contract_expect": {
+   "credit": "16.67",
+   "charge": "83.17",
+   "net": "66.50"
+  },
+  "spec_expect": {
+   "credit": "16.66",
+   "charge": "83.17",
+   "net": "66.50"
+  },
+  "perturbations": [
+   {
+    "kind": "different customer_id",
+    "case": {
+     "op": "prorate",
+     "customer": "cus_c905",
+     "plan": "lite-m",
+     "anchor": "2025-04-20",
+     "new": "starter-m",
+     "date": "2025-05-15"
+    },
+    "spec_expect": {
+     "credit": "16.66",
+     "charge": "83.17",
+     "net": "66.50"
+    }
+   },
+   {
+    "kind": "anchor and change date shifted by one billing cycle",
+    "case": {
+     "op": "prorate",
+     "customer": "cus_c105",
+     "plan": "lite-m",
+     "anchor": "2025-05-20",
+     "new": "starter-m",
+     "date": "2025-06-15"
+    },
+    "spec_expect": {
+     "credit": "16.66",
+     "charge": "83.17",
+     "net": "66.50"
+    }
+   }
+  ]
+ }
+}
