@@ -1,0 +1,8 @@
+.env
+.venv/
+jobs/
+
+# local only: assignment PDF contains the endpoint API key; planning/agent notes
+ASSIGNMENT.pdf
+CLAUDE.md
+PLAN.md
