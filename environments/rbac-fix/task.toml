@@ -1,0 +1,23 @@
+schema_version = "1.4"
+artifacts = []
+
+[task]
+name = "solumn/rbac-fix"
+version = "1.0.0"
+description = "Fix group inheritance in an internal access-control library."
+authors = []
+keywords = ["python", "access-control"]
+
+[metadata]
+
+[verifier]
+timeout_sec = 600.0
+environment_mode = "shared"
+
+[agent]
+timeout_sec = 600.0
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 900.0
+os = "linux"

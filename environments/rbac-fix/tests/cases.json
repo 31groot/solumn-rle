@@ -1,0 +1,1148 @@
+{
+ "acls": {
+  "chain": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "a": {
+     "roles": [
+      "view"
+     ]
+    },
+    "b": {
+     "roles": [
+      "dev"
+     ],
+     "parents": [
+      "a"
+     ]
+    },
+    "c": {
+     "roles": [
+      "ops"
+     ],
+     "parents": [
+      "b"
+     ]
+    }
+   },
+   "users": {
+    "u_c": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "c"
+     ]
+    },
+    "u_b": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "b"
+     ]
+    },
+    "u_off": {
+     "active": false,
+     "roles": [],
+     "groups": [
+      "c"
+     ]
+    },
+    "u_direct": {
+     "active": true,
+     "roles": [
+      "ops"
+     ],
+     "groups": [
+      "b"
+     ]
+    }
+   }
+  },
+  "diamond": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "top": {
+     "roles": [
+      "view"
+     ]
+    },
+    "left": {
+     "roles": [
+      "dev"
+     ],
+     "parents": [
+      "top"
+     ]
+    },
+    "right": {
+     "roles": [
+      "ops"
+     ],
+     "parents": [
+      "top"
+     ]
+    },
+    "bottom": {
+     "parents": [
+      "left",
+      "right"
+     ]
+    }
+   },
+   "users": {
+    "u": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "bottom"
+     ]
+    }
+   }
+  },
+  "cycle": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "x": {
+     "roles": [
+      "dev"
+     ],
+     "parents": [
+      "y"
+     ]
+    },
+    "y": {
+     "roles": [
+      "view"
+     ],
+     "parents": [
+      "x"
+     ]
+    }
+   },
+   "users": {
+    "u_x": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "x"
+     ]
+    },
+    "u_y": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "y"
+     ]
+    }
+   }
+  },
+  "selfcycle": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "z": {
+     "roles": [
+      "dev"
+     ],
+     "parents": [
+      "z"
+     ]
+    }
+   },
+   "users": {
+    "u": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "z"
+     ]
+    }
+   }
+  },
+  "deep": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "l0": {
+     "roles": [
+      "view"
+     ]
+    },
+    "l1": {
+     "parents": [
+      "l0"
+     ]
+    },
+    "l2": {
+     "parents": [
+      "l1"
+     ]
+    },
+    "l3": {
+     "parents": [
+      "l2"
+     ]
+    },
+    "l4": {
+     "parents": [
+      "l3"
+     ]
+    },
+    "l5": {
+     "parents": [
+      "l4"
+     ]
+    },
+    "l6": {
+     "parents": [
+      "l5"
+     ]
+    },
+    "l7": {
+     "parents": [
+      "l6"
+     ]
+    }
+   },
+   "users": {
+    "u": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "l7"
+     ]
+    }
+   }
+  },
+  "missing": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "g": {
+     "roles": [
+      "dev",
+      "nope"
+     ],
+     "parents": [
+      "ghost",
+      "base"
+     ]
+    },
+    "base": {
+     "roles": [
+      "view"
+     ]
+    }
+   },
+   "users": {
+    "u": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "g",
+      "nogroup"
+     ]
+    }
+   }
+  },
+  "priv": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "admins": {
+     "roles": [
+      "admin"
+     ]
+    },
+    "base": {
+     "roles": [
+      "view"
+     ]
+    },
+    "oncall": {
+     "roles": [
+      "ops"
+     ],
+     "parents": [
+      "admins",
+      "base"
+     ]
+    },
+    "child": {
+     "roles": [
+      "dev"
+     ],
+     "parents": [
+      "oncall"
+     ]
+    },
+    "team": {
+     "parents": [
+      "admins"
+     ]
+    },
+    "secteam": {
+     "roles": [
+      "sec"
+     ],
+     "parents": [
+      "base"
+     ]
+    }
+   },
+   "users": {
+    "u_oncall": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "oncall"
+     ]
+    },
+    "u_child": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "child"
+     ]
+    },
+    "u_team": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "team"
+     ]
+    },
+    "u_sec": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "secteam"
+     ]
+    },
+    "u_both": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "child",
+      "team"
+     ]
+    },
+    "u_off": {
+     "active": false,
+     "roles": [],
+     "groups": [
+      "child"
+     ]
+    }
+   }
+  },
+  "flat": {
+   "roles": {
+    "admin": {
+     "privileged": true,
+     "permissions": [
+      "*"
+     ]
+    },
+    "sec": {
+     "privileged": true,
+     "permissions": [
+      "iam:*"
+     ]
+    },
+    "dev": {
+     "permissions": [
+      "repo:read",
+      "repo:write"
+     ]
+    },
+    "view": {
+     "permissions": [
+      "docs:read"
+     ]
+    },
+    "ops": {
+     "permissions": [
+      "deploy:prod"
+     ]
+    }
+   },
+   "groups": {
+    "admins": {
+     "roles": [
+      "admin"
+     ]
+    },
+    "devs": {
+     "roles": [
+      "dev"
+     ]
+    },
+    "readers": {
+     "roles": [
+      "view"
+     ]
+    }
+   },
+   "users": {
+    "f_admin": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "admins"
+     ]
+    },
+    "f_dev": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "devs",
+      "readers"
+     ]
+    },
+    "f_none": {
+     "active": true,
+     "roles": [],
+     "groups": []
+    },
+    "f_read": {
+     "active": true,
+     "roles": [],
+     "groups": [
+      "readers"
+     ]
+    },
+    "f_roles": {
+     "active": true,
+     "roles": [
+      "ops",
+      "undefined"
+     ],
+     "groups": []
+    }
+   }
+  }
+ },
+ "functional": [
+  {
+   "id": "chain_grandparent",
+   "acl": "chain",
+   "op": "roles",
+   "user": "u_c",
+   "expect": [
+    "dev",
+    "ops",
+    "view"
+   ]
+  },
+  {
+   "id": "chain_parent",
+   "acl": "chain",
+   "op": "roles",
+   "user": "u_b",
+   "expect": [
+    "dev",
+    "view"
+   ]
+  },
+  {
+   "id": "chain_inherited_permission",
+   "acl": "chain",
+   "op": "allowed",
+   "user": "u_c",
+   "perm": "docs:read",
+   "expect": true
+  },
+  {
+   "id": "inactive_user_inherits_nothing",
+   "acl": "chain",
+   "op": "roles",
+   "user": "u_off",
+   "expect": []
+  },
+  {
+   "id": "direct_roles_plus_inherited",
+   "acl": "chain",
+   "op": "roles",
+   "user": "u_direct",
+   "expect": [
+    "dev",
+    "ops",
+    "view"
+   ]
+  },
+  {
+   "id": "diamond_counts_once",
+   "acl": "diamond",
+   "op": "roles",
+   "user": "u",
+   "expect": [
+    "dev",
+    "ops",
+    "view"
+   ]
+  },
+  {
+   "id": "cycle_tolerated_x",
+   "acl": "cycle",
+   "op": "roles",
+   "user": "u_x",
+   "expect": [
+    "dev",
+    "view"
+   ]
+  },
+  {
+   "id": "cycle_tolerated_y",
+   "acl": "cycle",
+   "op": "roles",
+   "user": "u_y",
+   "expect": [
+    "dev",
+    "view"
+   ]
+  },
+  {
+   "id": "undefined_parent_and_role_ignored",
+   "acl": "missing",
+   "op": "roles",
+   "user": "u",
+   "expect": [
+    "dev",
+    "view"
+   ]
+  },
+  {
+   "id": "self_parent_tolerated",
+   "acl": "selfcycle",
+   "op": "roles",
+   "user": "u",
+   "expect": [
+    "dev"
+   ]
+  },
+  {
+   "id": "deep_chain_seven_levels",
+   "acl": "deep",
+   "op": "roles",
+   "user": "u",
+   "expect": [
+    "view"
+   ]
+  },
+  {
+   "id": "deep_chain_permission",
+   "acl": "deep",
+   "op": "allowed",
+   "user": "u",
+   "perm": "docs:read",
+   "expect": true
+  },
+  {
+   "id": "privileged_role_inherited",
+   "acl": "priv",
+   "op": "roles",
+   "user": "u_oncall",
+   "expect": [
+    "admin",
+    "ops",
+    "view"
+   ]
+  },
+  {
+   "id": "privileged_role_inherited_two_levels",
+   "acl": "priv",
+   "op": "roles",
+   "user": "u_child",
+   "expect": [
+    "admin",
+    "dev",
+    "ops",
+    "view"
+   ]
+  },
+  {
+   "id": "roleless_group_passes_parent_roles",
+   "acl": "priv",
+   "op": "roles",
+   "user": "u_team",
+   "expect": [
+    "admin"
+   ]
+  },
+  {
+   "id": "second_privileged_role_inherited_not_admin",
+   "acl": "priv",
+   "op": "roles",
+   "user": "u_sec",
+   "expect": [
+    "sec",
+    "view"
+   ]
+  },
+  {
+   "id": "overlapping_groups_union",
+   "acl": "priv",
+   "op": "roles",
+   "user": "u_both",
+   "expect": [
+    "admin",
+    "dev",
+    "ops",
+    "view"
+   ]
+  },
+  {
+   "id": "inactive_user_no_inherited_admin",
+   "acl": "priv",
+   "op": "roles",
+   "user": "u_off",
+   "expect": []
+  },
+  {
+   "id": "inherited_wildcard_permission",
+   "acl": "priv",
+   "op": "allowed",
+   "user": "u_child",
+   "perm": "billing:write",
+   "expect": true
+  },
+  {
+   "id": "inherited_nonwildcard_denied",
+   "acl": "priv",
+   "op": "allowed",
+   "user": "u_sec",
+   "perm": "repo:read",
+   "expect": false
+  },
+  {
+   "id": "who_admin_includes_inherited",
+   "acl": "priv",
+   "op": "who",
+   "role": "admin",
+   "expect": [
+    "u_both",
+    "u_child",
+    "u_oncall",
+    "u_team"
+   ]
+  },
+  {
+   "id": "acl_priya",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "priya.n",
+   "expect": [
+    "admin",
+    "deployer",
+    "developer",
+    "security-admin",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_dkaur",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "dkaur",
+   "expect": [
+    "admin",
+    "deployer",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_rohan",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "rohan.k",
+   "expect": [
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_anika",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "anika.s",
+   "expect": [
+    "analyst",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_ines",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "ines.d",
+   "expect": [
+    "analyst",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_mchen",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "mchen",
+   "expect": [
+    "deployer",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_okafor",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "okafor",
+   "expect": [
+    "billing-editor",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_bwright",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "bwright",
+   "expect": [
+    "billing-editor",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_ylopez",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "ylopez",
+   "expect": [
+    "support-agent",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_rgupta",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "rgupta",
+   "expect": [
+    "security-admin",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_jmehta",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "jmehta",
+   "expect": [
+    "admin",
+    "deployer",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_kfoster",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "kfoster",
+   "expect": [
+    "admin",
+    "deployer",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_lwu",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "lwu",
+   "expect": [
+    "admin",
+    "deployer",
+    "developer",
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_anika_repo_read",
+   "acl": "pristine",
+   "op": "allowed",
+   "user": "anika.s",
+   "perm": "repo:read",
+   "expect": true
+  },
+  {
+   "id": "acl_jmehta_inherited_wildcard",
+   "acl": "pristine",
+   "op": "allowed",
+   "user": "jmehta",
+   "perm": "iam:write",
+   "expect": true
+  },
+  {
+   "id": "acl_who_admin",
+   "acl": "pristine",
+   "op": "who",
+   "role": "admin",
+   "expect": [
+    "dkaur",
+    "jmehta",
+    "kfoster",
+    "lwu",
+    "priya.n"
+   ]
+  },
+  {
+   "id": "acl_who_security_admin",
+   "acl": "pristine",
+   "op": "who",
+   "role": "security-admin",
+   "expect": [
+    "priya.n",
+    "rgupta"
+   ]
+  }
+ ],
+ "regression": [
+  {
+   "id": "acl_hsato",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "hsato",
+   "expect": [
+    "viewer"
+   ]
+  },
+  {
+   "id": "acl_svc_ci",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "svc-ci",
+   "expect": [
+    "deployer"
+   ]
+  },
+  {
+   "id": "acl_tbose_inactive",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "tbose",
+   "expect": []
+  },
+  {
+   "id": "acl_unknown_user",
+   "acl": "pristine",
+   "op": "roles",
+   "user": "nobody",
+   "expect": []
+  },
+  {
+   "id": "acl_hsato_no_billing",
+   "acl": "pristine",
+   "op": "allowed",
+   "user": "hsato",
+   "perm": "billing:write",
+   "expect": false
+  },
+  {
+   "id": "acl_dkaur_wildcard",
+   "acl": "pristine",
+   "op": "allowed",
+   "user": "dkaur",
+   "perm": "anything:at-all",
+   "expect": true
+  },
+  {
+   "id": "flat_admin",
+   "acl": "flat",
+   "op": "roles",
+   "user": "f_admin",
+   "expect": [
+    "admin"
+   ]
+  },
+  {
+   "id": "flat_two_groups",
+   "acl": "flat",
+   "op": "roles",
+   "user": "f_dev",
+   "expect": [
+    "dev",
+    "view"
+   ]
+  },
+  {
+   "id": "flat_no_groups",
+   "acl": "flat",
+   "op": "roles",
+   "user": "f_none",
+   "expect": []
+  },
+  {
+   "id": "flat_single_group",
+   "acl": "flat",
+   "op": "roles",
+   "user": "f_read",
+   "expect": [
+    "view"
+   ]
+  },
+  {
+   "id": "flat_undefined_role_ignored",
+   "acl": "flat",
+   "op": "roles",
+   "user": "f_roles",
+   "expect": [
+    "ops"
+   ]
+  },
+  {
+   "id": "flat_resource_wildcard",
+   "acl": "flat",
+   "op": "allowed",
+   "user": "f_dev",
+   "perm": "repo:write",
+   "expect": true
+  },
+  {
+   "id": "flat_other_resource_denied",
+   "acl": "flat",
+   "op": "allowed",
+   "user": "f_dev",
+   "perm": "deploy:prod",
+   "expect": false
+  },
+  {
+   "id": "flat_who_view",
+   "acl": "flat",
+   "op": "who",
+   "role": "view",
+   "expect": [
+    "f_dev",
+    "f_read"
+   ]
+  }
+ ],
+ "visible_test_ids": [
+  "test_group_grants_its_roles",
+  "test_user_roles_apply_without_groups",
+  "test_inactive_and_unknown_users_have_no_access",
+  "test_grant_matching[*-billing:write-True]",
+  "test_grant_matching[repo:*-repo:write-True]",
+  "test_grant_matching[repo:read-repo:read-True]",
+  "test_grant_matching[repo:read-repo:write-False]",
+  "test_grant_matching[repo:*-repository:read-False]",
+  "test_bad_permission_rejected",
+  "test_inherits_parent_group_roles",
+  "test_no_unexpected_admins",
+  "test_cli_check_exit_codes"
+ ]
+}

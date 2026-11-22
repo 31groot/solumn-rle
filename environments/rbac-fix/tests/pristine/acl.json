@@ -1,0 +1,42 @@
+{
+  "roles": {
+    "admin": {"privileged": true, "permissions": ["*"]},
+    "security-admin": {"privileged": true, "permissions": ["iam:*", "audit:read"]},
+    "deployer": {"permissions": ["deploy:staging", "deploy:prod", "pipeline:run"]},
+    "developer": {"permissions": ["repo:read", "repo:write", "pipeline:run"]},
+    "viewer": {"permissions": ["repo:read", "dashboard:read", "docs:read"]},
+    "analyst": {"permissions": ["warehouse:read", "dashboard:read"]},
+    "billing-editor": {"permissions": ["billing:read", "billing:write"]},
+    "support-agent": {"permissions": ["tickets:*", "customers:read"]}
+  },
+  "groups": {
+    "staff": {"description": "Everyone with a company account", "roles": ["viewer"], "parents": []},
+    "eng": {"description": "Engineering", "roles": ["developer"], "parents": ["staff"]},
+    "data-eng": {"description": "Data engineering", "roles": ["analyst"], "parents": ["eng"]},
+    "sre": {"description": "Site reliability", "roles": ["deployer"], "parents": ["eng"]},
+    "platform-admins": {"description": "Platform administrators", "roles": ["admin"], "parents": ["sre"]},
+    "security": {"description": "Security team", "roles": ["security-admin"], "parents": ["staff"]},
+    "finance": {"description": "Finance", "roles": ["billing-editor"], "parents": ["staff"]},
+    "support": {"description": "Customer support", "roles": ["support-agent"], "parents": ["staff"]},
+    "ops-oncall-2021": {"description": "On-call rota (2019-2021)", "roles": ["deployer"], "parents": ["platform-admins"]},
+    "contractors": {"description": "External contractors", "roles": ["viewer"], "parents": []}
+  },
+  "users": {
+    "priya.n": {"active": true, "groups": ["platform-admins", "security"], "last_login": "2026-11-21"},
+    "dkaur": {"active": true, "groups": ["platform-admins"], "last_login": "2026-11-20"},
+    "rohan.k": {"active": true, "groups": ["eng"], "last_login": "2026-11-20"},
+    "ines.d": {"active": true, "groups": ["data-eng"], "last_login": "2026-11-19"},
+    "anika.s": {"active": true, "groups": ["data-eng"], "last_login": "2026-11-18"},
+    "mchen": {"active": true, "groups": ["sre"], "last_login": "2026-11-21"},
+    "okafor": {"active": true, "groups": ["eng", "finance"], "last_login": "2026-11-17"},
+    "bwright": {"active": true, "groups": ["finance"], "last_login": "2026-11-14"},
+    "ylopez": {"active": true, "groups": ["support"], "last_login": "2026-11-21"},
+    "rgupta": {"active": true, "groups": ["security"], "last_login": "2026-11-12"},
+    "hsato": {"active": true, "groups": ["contractors"], "last_login": "2026-10-30"},
+    "svc-ci": {"active": true, "roles": ["deployer"], "groups": [], "last_login": "2026-11-21"},
+    "tbose": {"active": false, "groups": ["eng"], "last_login": "2026-08-29"},
+    "jmehta": {"active": true, "groups": ["ops-oncall-2021"], "last_login": "2021-12-03"},
+    "kfoster": {"active": true, "groups": ["ops-oncall-2021"], "last_login": "2021-09-14"},
+    "lwu": {"active": true, "groups": ["ops-oncall-2021"], "last_login": "2022-01-07"}
+  }
+}
