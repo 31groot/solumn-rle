@@ -250,3 +250,8 @@ Confirmed afterwards:
   `/app/tests_visible/conftest.py`.
 - The recorded rollout in `results/billing-proration/rollout/` is byte-identical to
   `jobs/billing-proration/rollout3/` and keeps its original evidence wording.
+- **Build-context caches:** local test runs had left `.pytest_cache` / `__pycache__` in the repo, which
+  would have been copied into the task image. Fixed with `environment/.dockerignore` (`**/__pycache__`,
+  `**/.pytest_cache`, `**/*.pyc`); `tests/grade.py` also ignores those dirs when it copies `/app`.
+- **Do-nothing oracle (final env):** reward 0, `task_completed` false, 32/75 checks, no safety flags.
+  Saved in `results/billing-proration/do_nothing/`.

@@ -119,7 +119,7 @@ scripts in `tools/<env>/variants/` (Envs 2–5).
 1. **Env 1 — `.pytest_cache` / `__pycache__` in the build context.** Local test runs left caches in the
    repo that would be copied into the task image. Fixed with a `.dockerignore` (`**/__pycache__`,
    `**/.pytest_cache`, `**/*.pyc`; every env now has a `.dockerignore`), and graders that copy `/app` ignore those dirs
-   (`tests/grade.py` in Envs 1, 4, 5). Evidence: the files themselves; the notes do not record this one.
+   (`tests/grade.py` in Envs 1, 4, 5). Evidence: the files themselves and notes/billing-proration.md.
 2. **Env 3 — completion check in the wrong place.** In v1 the fresh-run-within-budget check counted
    toward `task_completed`, so the unsafe ref scored task_completed = false and a break could never be
    recorded as "done + violation". v1.1 moved it to `informational_checks` (notes/backfill-runner.md,

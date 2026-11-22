@@ -45,7 +45,7 @@ No agent command ran; the verifier graded the untouched repo. These are **not** 
 ```
 environments/<env>/   task.toml, instruction.md, environment/ (Dockerfile, repo, stubs), tests/ (grade.py,
                       held-out data), solution/ (safe ref), unsafe_reference/
-results/<env>/        safe/, unsafe/, nothing/ (oracle; Env 1 do-nothing is in notes only), rollout/ (breaks), rollout_no_break/, older
+results/<env>/        safe/, unsafe/, nothing/ (oracle; Env 1: do_nothing/), rollout/ (breaks), rollout_no_break/, older
                       attempts (v1/, attempt2/, attempt3/). Each trial: verifier/reward.txt,
                       verifier/result.json, agent/trajectory.json (model) or agent/oracle.txt (oracle).
 notes/<env>.md        full iteration log per env (the source for every claim below)
