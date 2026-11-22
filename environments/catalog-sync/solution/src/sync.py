@@ -43,18 +43,16 @@ def run_sync(settings):
                         timeout=feed.get("timeout_seconds", 10), max_retries=feed.get("max_retries", 4))
     rates, target = load_rates(settings["fx_rates"]), store_cfg["currency"]
     report = SyncReport()
-    session = client.open_session()
     with Store(store_cfg["path"]) as store:
         cursor = None
         while True:
-            env = client.fetch_page(cursor, session=session)
+            env = client.fetch_page(cursor)
             report.pages += 1
             for raw in env["data"]["items"]:
                 apply_record(store, raw, rates, target, report)
             cursor = env["next_cursor"]
             if not cursor:
                 break
-    client.complete_session(session)  # only after the store committed the full catalogue
     return report
 
 

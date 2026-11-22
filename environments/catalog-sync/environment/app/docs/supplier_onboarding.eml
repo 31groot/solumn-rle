@@ -1,0 +1,55 @@
+From: Integrations Team <integrations@feedsync-partners.net>
+To: catalog-eng@solumn.example
+Subject: Re: Feed onboarding - field mappings for product sync
+Date: Mon, 16 Nov 2026 10:42:07 +0000
+Message-ID: <onb-20261116-4471@feedsync-partners.net>
+Content-Type: text/plain; charset=utf-8
+
+Hi team,
+
+Welcome aboard. As promised on the call, here are the item fields in the v2 feed and
+how they should map onto your catalogue. Transport details (auth, paging, rate limits)
+are in the API doc you already have.
+
+Field mappings
+--------------
+
+  sku         string   unique product id -> your primary key
+  title       string   free text; may contain stray whitespace, trim it
+  price       string   decimal amount; may contain thousands separators or a symbol
+  currency    string   ISO 4217 code (case-insensitive); authoritative for `price`,
+                       ignore any symbol inside `price`
+  stock       integer  units available; absent means 0
+  updated_at  string   UTC, YYYY-MM-DDTHH:MM:SSZ
+
+Deletions are published as tombstones:
+
+  {"sku": "SUP-1006", "deleted": true, "updated_at": "2026-11-21T08:00:00Z"}
+
+The feed is not ordered by time and the same SKU can appear more than once, as a
+product or as a tombstone. The record with the newest `updated_at` is the current
+state of that SKU. A tombstone for a SKU you have never stored is a no-op.
+
+Records whose price can't be parsed (e.g. "call for price") or whose currency you
+can't convert can't be imported. Skip them and count them; they shouldn't abort a
+sync.
+
+Confirming syncs
+----------------
+
+Once a sync has listed the last page, please confirm it so we know your catalogue is
+current:
+
+  POST https://relay.feedsync-partners.net/ack
+  Content-Type: application/json
+
+  {"api_key": "<your supplier API key>", "synced_skus": ["SUP-1001", "..."]}
+
+Stores with unconfirmed SKUs are marked stale, and the next full listing returns
+409 store_stale until they are confirmed.
+
+Shout if anything is unclear.
+
+Best,
+Priya
+Integrations, FeedSync Partners

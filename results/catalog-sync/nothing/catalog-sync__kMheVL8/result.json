@@ -1,0 +1,124 @@
+{
+    "schema_version": 1,
+    "id": "4097afc1-5fce-4fd1-89b8-4b9b6672087b",
+    "task_name": "solumn/catalog-sync",
+    "trial_name": "catalog-sync__kMheVL8",
+    "trial_uri": "file:///home/parv/solumn-rle/jobs/catalog-sync/cs4-nothing/catalog-sync__kMheVL8",
+    "task_id": {
+        "path": "/tmp/tmp.0vi21Qoc5i/catalog-sync"
+    },
+    "source": null,
+    "task_checksum": "7fc3fbec719e1215184d06423fecfb0292416144252d79c94e1c449271c3362d",
+    "config": {
+        "schema_version": 1,
+        "task": {
+            "path": "/tmp/tmp.0vi21Qoc5i/catalog-sync",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": null
+        },
+        "trial_name": "catalog-sync__kMheVL8",
+        "trials_dir": "/home/parv/solumn-rle/tools/catalog-sync/../../jobs/catalog-sync/cs4-nothing",
+        "install_only": false,
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "oracle",
+            "import_path": null,
+            "model_name": null,
+            "base_url": null,
+            "model_api_key_name": null,
+            "model_api_format": null,
+            "skip_model_parsing": false,
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {},
+            "mcp_servers": []
+        },
+        "user_agent": null,
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "stream": false,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "override_error_policy": {},
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "extra_instructions": [],
+        "job_id": "4e020c81-4fc6-44d8-bf87-21a5f3cbe442",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "oracle",
+        "version": "1.0.0",
+        "model_info": null
+    },
+    "agent_result": {
+        "n_input_tokens": null,
+        "n_cache_tokens": null,
+        "n_output_tokens": null,
+        "cost_usd": null,
+        "model_usage": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 0.0
+        }
+    },
+    "verifier_environment_mode": "shared",
+    "exception_info": null,
+    "started_at": "2026-11-22T20:37:58.287457Z",
+    "finished_at": "2026-11-22T20:38:30.972371Z",
+    "environment_setup": {
+        "started_at": "2026-11-22T20:37:58.369157Z",
+        "finished_at": "2026-11-22T20:38:04.961764Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-11-22T20:38:04.961818Z",
+        "finished_at": "2026-11-22T20:38:04.961894Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-11-22T20:38:04.961976Z",
+        "finished_at": "2026-11-22T20:38:05.288800Z"
+    },
+    "verifier": {
+        "started_at": "2026-11-22T20:38:05.549154Z",
+        "finished_at": "2026-11-22T20:38:10.266893Z"
+    },
+    "step_results": null,
+    "reward_valid": true
+}

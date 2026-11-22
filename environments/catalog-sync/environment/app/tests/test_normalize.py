@@ -1,6 +1,10 @@
+import sys
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # repo root, so `pytest` works from anywhere
 
 from normalize import (InvalidPrice, UnknownCurrency, clean_title, convert, load_rates,
                        normalize_item, parse_price, to_minor)

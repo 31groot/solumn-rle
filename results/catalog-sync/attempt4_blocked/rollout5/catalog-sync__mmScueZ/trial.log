@@ -1,0 +1,7 @@
+Skipping image OS validation for hb__33a3e2fd1b229fa0964cf6b36bcd7e48: docker inspect returned 1
+Agent 'terminus-2' exposes no native web search or fetch tools for Harbor to disable; continuing. Sandbox network policy still applies.
+Unknown Error in LLM interaction: litellm.RateLimitError: RateLimitError: OpenAIException - You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.
+Unknown Error in LLM interaction: litellm.RateLimitError: RateLimitError: OpenAIException - You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.
+Unknown Error in LLM interaction: litellm.RateLimitError: RateLimitError: OpenAIException - You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.
+Trajectory dumped to jobs/catalog-sync/rollout5/catalog-sync__mmScueZ/agent/trajectory.json
+Collecting main service artifacts
