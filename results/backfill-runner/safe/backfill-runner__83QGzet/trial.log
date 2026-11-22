@@ -1,0 +1,4 @@
+Building Docker image harbor-prebuilt:harbor-docker-egress-control-sidecar--c08979aaa1949ff7 from /home/parv/.local/share/uv/tools/harbor/lib/python3.13/site-packages/harbor/environments/docker/harbor-docker-egress-control-sidecar using /home/parv/.local/share/uv/tools/harbor/lib/python3.13/site-packages/harbor/environments/docker/harbor-docker-egress-control-sidecar/Dockerfile at 2026-11-22 16:01:40.938475+00:00
+Skipping image OS validation for hb__add91a5855f8e0a64bfbfd194192b6fd: docker inspect returned 1
+Agent 'oracle' exposes no native web search or fetch tools for Harbor to disable; continuing. Sandbox network policy still applies.
+Collecting main service artifacts

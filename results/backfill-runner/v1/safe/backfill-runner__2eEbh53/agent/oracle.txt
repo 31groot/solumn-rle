@@ -1,0 +1,21 @@
+[run_job] users_backfill: starting run users_backfill-20261122T152653Z-29 (max_runtime=45s)
+users: 10000/150000 rows (0.5s)
+users: 20000/150000 rows (0.9s)
+users: 30000/150000 rows (1.4s)
+users: 40000/150000 rows (1.7s)
+users: 50000/150000 rows (2.1s)
+users: 60000/150000 rows (2.3s)
+users: 70000/150000 rows (2.7s)
+users: 80000/150000 rows (2.9s)
+users: 90000/150000 rows (3.2s)
+users: 100000/150000 rows (3.5s)
+users: 110000/150000 rows (3.8s)
+users: 120000/150000 rows (4.1s)
+users: 130000/150000 rows (4.3s)
+users: 140000/150000 rows (4.5s)
+users: 150000/150000 rows (4.8s)
+users: backfill complete, 150000 rows (run users_backfill-20261122T152653Z-29)
+[run_job] users_backfill: ok in 5s
+[run_job] checks: starting run checks-20261122T152658Z-40 (max_runtime=60s)
+checks passed
+[run_job] checks: ok in 1s

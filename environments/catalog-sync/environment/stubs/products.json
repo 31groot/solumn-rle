@@ -1,0 +1,458 @@
+[
+ {
+  "sku": "SUP-1001",
+  "title": "Classic  Footrest",
+  "price": "2,499.50",
+  "currency": "EUR",
+  "stock": 15,
+  "updated_at": "2026-11-16T00:10:00Z"
+ },
+ {
+  "sku": "SUP-1002",
+  "title": "Steel  Shredder",
+  "price": "129.00",
+  "currency": "GBP",
+  "stock": 92,
+  "updated_at": "2026-11-14T12:33:00Z"
+ },
+ {
+  "sku": "SUP-1003",
+  "title": "Ergo  Filing Box",
+  "price": " 10,707.00 ",
+  "currency": "INR",
+  "stock": 86,
+  "updated_at": "2026-11-12T12:48:00Z"
+ },
+ {
+  "sku": "SUP-1004",
+  "title": "Mini  Tape Dispenser",
+  "price": "89.95",
+  "currency": "USD",
+  "stock": 141,
+  "updated_at": "2026-11-14T18:14:00Z"
+ },
+ {
+  "sku": "SUP-1005",
+  "title": "Bamboo  Stapler",
+  "price": " 2,499.50 ",
+  "currency": "EUR",
+  "stock": 67,
+  "updated_at": "2026-11-10T03:28:00Z"
+ },
+ {
+  "sku": "SUP-1006",
+  "title": "Mini  Label Maker",
+  "price": "12.00",
+  "currency": "GBP",
+  "stock": 76,
+  "updated_at": "2026-11-16T08:11:00Z"
+ },
+ {
+  "sku": "SUP-1007",
+  "title": "Eco  Laptop Stand",
+  "price": "207,458.00",
+  "currency": "INR",
+  "updated_at": "2026-11-11T18:54:00Z"
+ },
+ {
+  "sku": "SUP-1008",
+  "title": "Mini  Desk Mat",
+  "price": "89.95",
+  "currency": "USD",
+  "stock": 117,
+  "updated_at": "2026-11-15T22:50:00Z"
+ },
+ {
+  "sku": "SUP-1009",
+  "title": "Mini  Laptop Stand",
+  "price": "4.5",
+  "currency": "EUR",
+  "stock": 111,
+  "updated_at": "2026-11-12T04:17:00Z"
+ },
+ {
+  "sku": "SUP-1010",
+  "title": "  Eco\tSticky   Notes ",
+  "price": " 24.50 ",
+  "currency": "GBP",
+  "stock": 46,
+  "updated_at": "2026-11-17T09:13:00Z"
+ },
+ {
+  "sku": "SUP-1041",
+  "deleted": true,
+  "updated_at": "2026-11-19T00:00:00Z"
+ },
+ {
+  "sku": "SUP-1045",
+  "deleted": true,
+  "updated_at": "2026-11-21T23:00:00Z"
+ },
+ {
+  "sku": "SUP-1011",
+  "title": "Bamboo  Paper Clips",
+  "price": "996",
+  "currency": "INR",
+  "stock": 46,
+  "updated_at": "2026-11-12T18:30:00Z"
+ },
+ {
+  "sku": "SUP-1012",
+  "title": "Mini  Notebook A5",
+  "price": " 7.25 ",
+  "currency": "USD",
+  "stock": 19,
+  "updated_at": "2026-11-13T09:05:00Z"
+ },
+ {
+  "sku": "SUP-1013",
+  "title": "Pro  Footrest",
+  "price": "19.99",
+  "currency": "EUR",
+  "stock": 118,
+  "updated_at": "2026-11-13T22:22:00Z"
+ },
+ {
+  "sku": "SUP-1014",
+  "title": "Eco  Ring Binder",
+  "price": "89.95",
+  "currency": "GBP",
+  "stock": 123,
+  "updated_at": "2026-11-15T21:04:00Z"
+ },
+ {
+  "sku": "SUP-1015",
+  "title": "Steel  Laptop Stand",
+  "price": "call for price",
+  "currency": "INR",
+  "stock": 120,
+  "updated_at": "2026-11-13T10:15:00Z"
+ },
+ {
+  "sku": "SUP-1016",
+  "title": "Bamboo  Desk Lamp",
+  "price": "19.99",
+  "currency": "USD",
+  "stock": 211,
+  "updated_at": "2026-11-16T18:37:00Z"
+ },
+ {
+  "sku": "SUP-1017",
+  "title": "Compact  Footrest",
+  "price": "2,499.50",
+  "currency": "EUR",
+  "stock": 144,
+  "updated_at": "2026-11-12T19:52:00Z"
+ },
+ {
+  "sku": "SUP-1018",
+  "title": "Compact  Desk Lamp",
+  "price": "24.50",
+  "currency": "GBP",
+  "stock": 243,
+  "updated_at": "2026-11-16T03:03:00Z"
+ },
+ {
+  "sku": "SUP-1019",
+  "title": "Classic  Marker Set",
+  "price": " 374 ",
+  "currency": "INR",
+  "stock": 120,
+  "updated_at": "2026-11-17T06:00:00Z"
+ },
+ {
+  "sku": "SUP-1020",
+  "title": "Classic  Filing Box",
+  "price": "129",
+  "currency": "USD",
+  "stock": 1,
+  "updated_at": "2026-11-17T12:24:00Z"
+ },
+ {
+  "sku": "SUP-1021",
+  "title": "Compact  Cable Tray",
+  "price": "129",
+  "currency": "JPY",
+  "stock": 238,
+  "updated_at": "2026-11-17T05:02:00Z"
+ },
+ {
+  "sku": "SUP-1022",
+  "title": "Bamboo  Paper Clips",
+  "price": " 129.00 ",
+  "currency": "GBP",
+  "stock": 155,
+  "updated_at": "2026-11-10T15:21:00Z"
+ },
+ {
+  "sku": "SUP-1023",
+  "title": "Classic  Gel Pen",
+  "price": "374.00",
+  "currency": "INR",
+  "stock": 162,
+  "updated_at": "2026-11-11T09:43:00Z"
+ },
+ {
+  "sku": "SUP-1024",
+  "title": "Mini  Desk Mat",
+  "price": " 129 ",
+  "currency": "USD",
+  "stock": 169,
+  "updated_at": "2026-11-15T19:25:00Z"
+ },
+ {
+  "sku": "SUP-1025",
+  "title": "Mini  Tape Dispenser",
+  "price": " 1,299.00 ",
+  "currency": "EUR",
+  "stock": 181,
+  "updated_at": "2026-11-17T03:23:00Z"
+ },
+ {
+  "sku": "SUP-1026",
+  "title": "Pro  Desk Lamp",
+  "price": "$ 1,049.00",
+  "currency": "GBP",
+  "stock": 57,
+  "updated_at": "2026-11-13T17:04:00Z"
+ },
+ {
+  "sku": "SUP-1027",
+  "title": "Pro  Ring Binder",
+  "price": "996",
+  "currency": "INR",
+  "stock": 139,
+  "updated_at": "2026-11-13T14:48:00Z"
+ },
+ {
+  "sku": "SUP-1028",
+  "title": "Ergo  Desk Lamp",
+  "price": "7.25",
+  "currency": "USD",
+  "stock": 10,
+  "updated_at": "2026-11-10T03:07:00Z"
+ },
+ {
+  "sku": "SUP-1029",
+  "title": "Pro  Paper Clips",
+  "price": "49.00",
+  "currency": "EUR",
+  "stock": 52,
+  "updated_at": "2026-11-15T18:30:00Z"
+ },
+ {
+  "sku": "SUP-1030",
+  "title": "Ergo  Label Maker",
+  "price": "1,299.00",
+  "currency": "GBP",
+  "stock": 74,
+  "updated_at": "2026-11-12T20:46:00Z"
+ },
+ {
+  "sku": "SUP-1045",
+  "title": "Compact  Label Maker",
+  "price": "49.00",
+  "currency": "EUR",
+  "stock": 125,
+  "updated_at": "2026-11-17T00:15:00Z"
+ },
+ {
+  "sku": "SUP-1031",
+  "title": "Classic  Desk Lamp",
+  "price": "7,466.00",
+  "currency": "usd",
+  "stock": 198,
+  "updated_at": "2026-11-15T14:01:00Z"
+ },
+ {
+  "sku": "SUP-1032",
+  "title": "Classic  Desk Lamp",
+  "price": "89.95",
+  "currency": "USD",
+  "stock": 139,
+  "updated_at": "2026-11-18T16:35:00Z"
+ },
+ {
+  "sku": "SUP-1033",
+  "title": "Steel  Ring Binder",
+  "price": " 24.5 ",
+  "currency": "EUR",
+  "stock": 177,
+  "updated_at": "2026-11-10T15:02:00Z"
+ },
+ {
+  "sku": "SUP-1034",
+  "title": "Eco  Paper Clips",
+  "price": " 7.25 ",
+  "currency": "GBP",
+  "stock": 80,
+  "updated_at": "2026-11-14T16:11:00Z"
+ },
+ {
+  "sku": "SUP-1035",
+  "title": "Classic  Shredder",
+  "price": "10,707.00",
+  "currency": "INR",
+  "stock": 61,
+  "updated_at": "2026-11-10T17:21:00Z"
+ },
+ {
+  "sku": "SUP-1036",
+  "title": "Compact  Whiteboard",
+  "price": " 49 ",
+  "currency": "USD",
+  "stock": 36,
+  "updated_at": "2026-11-12T04:13:00Z"
+ },
+ {
+  "sku": "SUP-1037",
+  "title": "Eco  Paper Clips",
+  "price": " 89.95 ",
+  "currency": "EUR",
+  "stock": 129,
+  "updated_at": "2026-11-14T14:57:00Z"
+ },
+ {
+  "sku": "SUP-1038",
+  "title": "Ergo  Desk Lamp",
+  "price": " 19.99 ",
+  "currency": "GBP",
+  "stock": 155,
+  "updated_at": "2026-11-12T02:17:00Z"
+ },
+ {
+  "sku": "SUP-1039",
+  "title": "Eco  Tape Dispenser",
+  "price": " 602 ",
+  "currency": "INR",
+  "stock": 124,
+  "updated_at": "2026-11-16T23:34:00Z"
+ },
+ {
+  "sku": "SUP-1040",
+  "title": "Steel  Paper Clips",
+  "price": "7.25",
+  "currency": "USD",
+  "stock": 232,
+  "updated_at": "2026-11-17T05:29:00Z"
+ },
+ {
+  "sku": "SUP-1041",
+  "title": "Mini  Laptop Stand",
+  "price": " 7.25 ",
+  "currency": "EUR",
+  "stock": 51,
+  "updated_at": "2026-11-15T05:53:00Z"
+ },
+ {
+  "sku": "SUP-1042",
+  "title": "Steel  Filing Box",
+  "price": "129",
+  "currency": "GBP",
+  "stock": 109,
+  "updated_at": "2026-11-14T17:17:00Z"
+ },
+ {
+  "sku": "SUP-1043",
+  "title": "Classic  Whiteboard",
+  "price": "107,817.00",
+  "currency": "INR",
+  "stock": 24,
+  "updated_at": "2026-11-10T03:29:00Z"
+ },
+ {
+  "sku": "SUP-1044",
+  "title": "Compact  Desk Lamp",
+  "price": " 129.00 ",
+  "currency": "USD",
+  "stock": 206,
+  "updated_at": "2026-11-11T21:53:00Z"
+ },
+ {
+  "sku": "SUP-1046",
+  "title": "Bamboo  Sticky Notes",
+  "price": "129.00",
+  "currency": "GBP",
+  "stock": 205,
+  "updated_at": "2026-11-17T03:58:00Z"
+ },
+ {
+  "sku": "SUP-1047",
+  "title": "Pro  Shredder",
+  "price": " 4,067.00 ",
+  "currency": "INR",
+  "stock": 137,
+  "updated_at": "2026-11-13T17:42:00Z"
+ },
+ {
+  "sku": "SUP-1048",
+  "title": "Pro  Marker Set",
+  "price": " 4.50 ",
+  "currency": "USD",
+  "stock": 84,
+  "updated_at": "2026-11-13T12:48:00Z"
+ },
+ {
+  "sku": "SUP-1003",
+  "title": "Ergo  Filing Box",
+  "price": "21.00",
+  "currency": "INR",
+  "stock": 5,
+  "updated_at": "2026-11-20T09:00:00Z"
+ },
+ {
+  "sku": "SUP-1012",
+  "title": "Ergo Laptop Stand v2",
+  "price": " 7.25 ",
+  "currency": "USD",
+  "stock": 19,
+  "updated_at": "2026-11-20T09:05:00Z"
+ },
+ {
+  "sku": "SUP-1018",
+  "title": "Compact  Desk Lamp",
+  "price": "24.50",
+  "currency": "GBP",
+  "stock": 0,
+  "updated_at": "2026-11-20T09:10:00Z"
+ },
+ {
+  "sku": "SUP-1005",
+  "title": "Bamboo  Stapler",
+  "price": "1.00",
+  "currency": "EUR",
+  "stock": 67,
+  "updated_at": "2026-11-01T00:00:00Z"
+ },
+ {
+  "sku": "SUP-1041",
+  "title": "Mini  Laptop Stand",
+  "price": "33.00",
+  "currency": "EUR",
+  "stock": 51,
+  "updated_at": "2026-11-22T01:00:00Z"
+ },
+ {
+  "sku": "SUP-1023",
+  "title": "OLD TITLE",
+  "price": "374.00",
+  "currency": "INR",
+  "stock": 162,
+  "updated_at": "2026-11-02T00:00:00Z"
+ },
+ {
+  "sku": "SUP-1006",
+  "deleted": true,
+  "updated_at": "2026-11-21T08:00:00Z"
+ },
+ {
+  "sku": "SUP-1028",
+  "deleted": true,
+  "updated_at": "2026-11-21T08:30:00Z"
+ },
+ {
+  "sku": "SUP-9999",
+  "deleted": true,
+  "updated_at": "2026-11-21T09:00:00Z"
+ }
+]

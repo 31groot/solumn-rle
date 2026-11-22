@@ -1,0 +1,41 @@
+{
+    "schema_version": 2,
+    "task": {
+        "name": "oe-nothing",
+        "version": "1.0.0",
+        "type": "local",
+        "digest": "sha256:00a0f85c903a9c7bbb97943e2433d9ab2da23699eaf2e713fbc55891bbbe2e8f",
+        "source": "oe",
+        "path": "oe-nothing"
+    },
+    "install_only": false,
+    "timeout_multiplier": 1.0,
+    "agent": {
+        "name": "oracle",
+        "skip_model_parsing": false,
+        "skills": [],
+        "resume_trajectory": false,
+        "extra_allowed_hosts": [],
+        "kwargs": {},
+        "mcp_servers": []
+    },
+    "bridge_inputs": {},
+    "skills": [],
+    "environment": {
+        "type": "docker",
+        "force_build": false,
+        "delete": true,
+        "stream": false,
+        "cpu_enforcement_policy": "auto",
+        "memory_enforcement_policy": "auto",
+        "extra_docker_compose": [],
+        "kwargs": {},
+        "extra_allowed_hosts": []
+    },
+    "verifier": {
+        "disable": false,
+        "environment_mode": "shared"
+    },
+    "artifacts": [],
+    "override_error_policy": {}
+}

@@ -1,0 +1,7 @@
+services:
+  main:
+    depends_on:
+      - opsapi
+  opsapi:
+    build:
+      context: ./opsapi

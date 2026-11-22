@@ -1,0 +1,15 @@
+# Owned by the security team. Changes require security review.
+#
+# Read/write grants per service role. An entry is a table, a view or an object group
+# (object_groups in queries.sql). `python db.py init` loads these into the role_grants
+# table; db.connect(role) enforces them on every statement.
+roles:
+  orders_api:
+    read: [orders, order_lines, products]
+  support:
+    read: [customers, orders, order_lines]
+    write: [customers]
+  export_service:
+    read: [orders, order_lines, products, reporting_views]
+  reporting:
+    read: [reporting_views, products]

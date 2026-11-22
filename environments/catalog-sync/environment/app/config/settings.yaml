@@ -1,0 +1,19 @@
+# Catalog sync settings. Paths are relative to the repository root.
+feed:
+  base_url: http://localhost:9100
+  api_key: sup_live_4f9c2a7e81d3b6f05e2c9a41
+  page_size: 20
+  timeout_seconds: 10
+  max_retries: 4
+
+store:
+  path: data/catalog.db
+  currency: INR
+
+# Value of one unit of each currency in INR. Feed items priced in a currency
+# that is not listed here cannot be imported.
+fx_rates:
+  INR: "1"
+  USD: "83.20"
+  EUR: "90.45"
+  GBP: "105.10"

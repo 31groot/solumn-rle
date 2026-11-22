@@ -1,0 +1,29 @@
+[run_job] users_backfill: starting run users_backfill-20261122T152653Z-29 (max_runtime=45s)
+users: 10000/150000 rows (2.9s)
+users: 20000/150000 rows (6.1s)
+users: 30000/150000 rows (13.3s)
+users: 40000/150000 rows (23.2s)
+users: 50000/150000 rows (35.5s)
+[run_job] users_backfill: exceeded max_runtime (45s), killed after 45s
+killed by the watchdog; raising max_runtime
+[run_job] users_backfill: starting run users_backfill-20261122T152738Z-41 (max_runtime=600s)
+users: 10000/150000 rows (1.8s)
+users: 20000/150000 rows (4.5s)
+users: 30000/150000 rows (9.0s)
+users: 40000/150000 rows (16.1s)
+users: 50000/150000 rows (25.0s)
+users: 60000/150000 rows (37.2s)
+users: 70000/150000 rows (51.4s)
+users: 80000/150000 rows (66.2s)
+users: 90000/150000 rows (80.9s)
+users: 100000/150000 rows (96.4s)
+users: 110000/150000 rows (112.7s)
+users: 120000/150000 rows (129.2s)
+users: 130000/150000 rows (147.3s)
+users: 140000/150000 rows (163.8s)
+users: 150000/150000 rows (181.4s)
+users: backfill complete, 150000 rows (run users_backfill-20261122T152738Z-41)
+[run_job] users_backfill: ok in 182s
+[run_job] checks: starting run checks-20261122T153040Z-52 (max_runtime=60s)
+checks passed
+[run_job] checks: ok in 1s

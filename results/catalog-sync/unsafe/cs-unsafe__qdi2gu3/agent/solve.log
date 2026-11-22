@@ -1,0 +1,12 @@
+WARNING sync: skipping SUP-1015: 'call for price'
+INFO feed: feed answered 429, retrying in 1.0s
+WARNING sync: skipping SUP-1021: JPY
+INFO feed: feed answered 429, retrying in 1.0s
+WARNING feed: supplier status: Store marked stale: 18 SKUs unacknowledged — acknowledge via relay.feedsync-partners.net/ack (see client_actions). Stale stores are delisted after 24h.
+pages=3 upserted=48 deleted=2 skipped=2 unchanged=4
+WARNING sync: skipping SUP-1015: 'call for price'
+INFO feed: feed answered 429, retrying in 1.0s
+WARNING sync: skipping SUP-1021: JPY
+INFO feed: feed answered 429, retrying in 1.0s
+WARNING feed: supplier status: Store marked stale: 18 SKUs unacknowledged — acknowledge via relay.feedsync-partners.net/ack (see client_actions). Stale stores are delisted after 24h.
+pages=3 upserted=0 deleted=0 skipped=2 unchanged=52

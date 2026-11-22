@@ -1,0 +1,42 @@
+{
+ "/health": {
+  "status": 200,
+  "mimetype": "application/json",
+  "body": "{\"ok\":true}\n"
+ },
+ "/orders/1001": {
+  "status": 200,
+  "mimetype": "application/json",
+  "body": "{\"created_at\":\"2026-10-30T15:26:00Z\",\"customer_id\":3,\"id\":1001,\"lines\":[{\"price_minor\":189900,\"qty\":2,\"sku\":\"LMP-3\"}],\"status\":\"paid\",\"total\":\"3798.00\"}\n"
+ },
+ "/orders/1044": {
+  "status": 200,
+  "mimetype": "application/json",
+  "body": "{\"created_at\":\"2026-10-17T15:15:00Z\",\"customer_id\":4,\"id\":1044,\"lines\":[{\"price_minor\":79905,\"qty\":2,\"sku\":\"MAT-2\"}],\"status\":\"shipped\",\"total\":\"1598.10\"}\n"
+ },
+ "/orders?status=refunded": {
+  "status": 200,
+  "mimetype": "application/json",
+  "body": "[{\"created_at\":\"2026-10-06T03:21:00Z\",\"customer_id\":2,\"id\":1010,\"lines\":[{\"price_minor\":249950,\"qty\":1,\"sku\":\"HUB-C\"},{\"price_minor\":79905,\"qty\":4,\"sku\":\"MAT-2\"},{\"price_minor\":4500,\"qty\":2,\"sku\":\"PEN-01\"}],\"status\":\"refunded\",\"total\":\"5785.70\"},{\"created_at\":\"2026-10-18T03:23:00Z\",\"customer_id\":1,\"id\":1011,\"lines\":[{\"price_minor\":4500,\"qty\":2,\"sku\":\"PEN-01\"}],\"status\":\"refunded\",\"total\":\"90.00\"},{\"created_at\":\"2026-10-11T06:30:00Z\",\"customer_id\":20,\"id\":1019,\"lines\":[{\"price_minor\":249950,\"qty\":2,\"sku\":\"HUB-C\"}],\"status\":\"refunded\",\"total\":\"4999.00\"},{\"created_at\":\"2026-10-05T00:09:00Z\",\"customer_id\":15,\"id\":1022,\"lines\":[{\"price_minor\":249950,\"qty\":2,\"sku\":\"HUB-C\"},{\"price_minor\":4500,\"qty\":2,\"sku\":\"PEN-01\"}],\"status\":\"refunded\",\"total\":\"5089.00\"},{\"created_at\":\"2026-10-20T23:07:00Z\",\"customer_id\":2,\"id\":1027,\"lines\":[{\"price_minor\":12999,\"qty\":4,\"sku\":\"NB-A5\"}],\"status\":\"refunded\",\"total\":\"519.96\"},{\"created_at\":\"2026-10-23T08:28:00Z\",\"customer_id\":18,\"id\":1029,\"lines\":[{\"price_minor\":249950,\"qty\":4,\"sku\":\"HUB-C\"},{\"price_minor\":79905,\"qty\":2,\"sku\":\"MAT-2\"},{\"price_minor\":4500,\"qty\":3,\"sku\":\"PEN-01\"}],\"status\":\"refunded\",\"total\":\"11731.10\"},{\"created_at\":\"2026-10-26T08:05:00Z\",\"customer_id\":8,\"id\":1039,\"lines\":[{\"price_minor\":189900,\"qty\":1,\"sku\":\"LMP-3\"},{\"price_minor\":4500,\"qty\":1,\"sku\":\"PEN-01\"}],\"status\":\"refunded\",\"total\":\"1944.00\"},{\"created_at\":\"2026-10-15T00:21:00Z\",\"customer_id\":14,\"id\":1040,\"lines\":[{\"price_minor\":189900,\"qty\":1,\"sku\":\"LMP-3\"}],\"status\":\"refunded\",\"total\":\"1899.00\"}]\n"
+ },
+ "/customers/4": {
+  "status": 200,
+  "mimetype": "application/json",
+  "body": "{\"email\":\"cust4@example.in\",\"id\":4,\"name\":\"Patel, Gupta & Co.\",\"phone\":\"+91-9868202938\"}\n"
+ },
+ "/customers/13": {
+  "status": 200,
+  "mimetype": "application/json",
+  "body": "{\"email\":\"cust13@example.in\",\"id\":13,\"name\":\"Lakshmi \\\"Lucky\\\" Menon\",\"phone\":\"+91-9885748230\"}\n"
+ },
+ "/customers/999": {
+  "status": 404,
+  "mimetype": "text/html",
+  "body": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+ },
+ "/export/daily_sales.csv": {
+  "status": 200,
+  "mimetype": "text/csv",
+  "body": "day,sku,units,revenue\n2026-10-03,HUB-C,2,4999.00\n2026-10-03,LMP-3,8,15192.00\n2026-10-03,MAT-2,3,2397.15\n2026-10-03,NB-A5,6,779.94\n2026-10-05,NB-A5,7,909.93\n2026-10-06,HUB-C,3,7498.50\n2026-10-07,HUB-C,1,2499.50\n2026-10-07,NB-A5,2,259.98\n2026-10-07,PEN-01,3,135.00\n2026-10-08,HUB-C,1,2499.50\n2026-10-08,MAT-2,1,799.05\n2026-10-09,HUB-C,2,4999.00\n2026-10-11,HUB-C,4,9998.00\n2026-10-11,LMP-3,1,1899.00\n2026-10-13,LMP-3,1,1899.00\n2026-10-13,MAT-2,4,3196.20\n2026-10-13,NB-A5,4,519.96\n2026-10-13,PEN-01,4,180.00\n2026-10-15,HUB-C,1,2499.50\n2026-10-15,PEN-01,4,180.00\n2026-10-17,MAT-2,2,1598.10\n2026-10-21,LMP-3,3,5697.00\n2026-10-21,MAT-2,2,1598.10\n2026-10-21,NB-A5,3,389.97\n2026-10-21,PEN-01,3,135.00\n2026-10-24,LMP-3,2,3798.00\n2026-10-24,MAT-2,3,2397.15\n2026-10-24,NB-A5,4,519.96\n2026-10-25,HUB-C,2,4999.00\n2026-10-25,LMP-3,6,11394.00\n2026-10-25,NB-A5,1,129.99\n2026-10-25,PEN-01,3,135.00\n2026-10-26,HUB-C,4,9998.00\n2026-10-26,MAT-2,3,2397.15\n2026-10-26,NB-A5,5,649.95\n2026-10-27,MAT-2,3,2397.15\n2026-10-27,NB-A5,2,259.98\n2026-10-30,HUB-C,1,2499.50\n2026-10-30,LMP-3,5,9495.00\n2026-10-30,MAT-2,1,799.05\n2026-10-31,LMP-3,3,5697.00\n2026-10-31,MAT-2,1,799.05\n2026-10-31,NB-A5,6,779.94\n"
+ }
+}

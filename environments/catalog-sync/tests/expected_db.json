@@ -1,0 +1,346 @@
+[
+ {
+  "sku": "SUP-1001",
+  "title": "Classic Footrest",
+  "price_minor": 22607978,
+  "currency": "INR",
+  "stock": 15,
+  "updated_at": "2026-11-16T00:10:00Z"
+ },
+ {
+  "sku": "SUP-1002",
+  "title": "Steel Shredder",
+  "price_minor": 1355790,
+  "currency": "INR",
+  "stock": 92,
+  "updated_at": "2026-11-14T12:33:00Z"
+ },
+ {
+  "sku": "SUP-1003",
+  "title": "Ergo Filing Box",
+  "price_minor": 2100,
+  "currency": "INR",
+  "stock": 5,
+  "updated_at": "2026-11-20T09:00:00Z"
+ },
+ {
+  "sku": "SUP-1004",
+  "title": "Mini Tape Dispenser",
+  "price_minor": 748384,
+  "currency": "INR",
+  "stock": 141,
+  "updated_at": "2026-11-14T18:14:00Z"
+ },
+ {
+  "sku": "SUP-1005",
+  "title": "Bamboo Stapler",
+  "price_minor": 22607978,
+  "currency": "INR",
+  "stock": 67,
+  "updated_at": "2026-11-10T03:28:00Z"
+ },
+ {
+  "sku": "SUP-1007",
+  "title": "Eco Laptop Stand",
+  "price_minor": 20745800,
+  "currency": "INR",
+  "stock": 0,
+  "updated_at": "2026-11-11T18:54:00Z"
+ },
+ {
+  "sku": "SUP-1008",
+  "title": "Mini Desk Mat",
+  "price_minor": 748384,
+  "currency": "INR",
+  "stock": 117,
+  "updated_at": "2026-11-15T22:50:00Z"
+ },
+ {
+  "sku": "SUP-1009",
+  "title": "Mini Laptop Stand",
+  "price_minor": 40703,
+  "currency": "INR",
+  "stock": 111,
+  "updated_at": "2026-11-12T04:17:00Z"
+ },
+ {
+  "sku": "SUP-1010",
+  "title": "Eco Sticky Notes",
+  "price_minor": 257495,
+  "currency": "INR",
+  "stock": 46,
+  "updated_at": "2026-11-17T09:13:00Z"
+ },
+ {
+  "sku": "SUP-1011",
+  "title": "Bamboo Paper Clips",
+  "price_minor": 99600,
+  "currency": "INR",
+  "stock": 46,
+  "updated_at": "2026-11-12T18:30:00Z"
+ },
+ {
+  "sku": "SUP-1012",
+  "title": "Ergo Laptop Stand v2",
+  "price_minor": 60320,
+  "currency": "INR",
+  "stock": 19,
+  "updated_at": "2026-11-20T09:05:00Z"
+ },
+ {
+  "sku": "SUP-1013",
+  "title": "Pro Footrest",
+  "price_minor": 180810,
+  "currency": "INR",
+  "stock": 118,
+  "updated_at": "2026-11-13T22:22:00Z"
+ },
+ {
+  "sku": "SUP-1014",
+  "title": "Eco Ring Binder",
+  "price_minor": 945375,
+  "currency": "INR",
+  "stock": 123,
+  "updated_at": "2026-11-15T21:04:00Z"
+ },
+ {
+  "sku": "SUP-1016",
+  "title": "Bamboo Desk Lamp",
+  "price_minor": 166317,
+  "currency": "INR",
+  "stock": 211,
+  "updated_at": "2026-11-16T18:37:00Z"
+ },
+ {
+  "sku": "SUP-1017",
+  "title": "Compact Footrest",
+  "price_minor": 22607978,
+  "currency": "INR",
+  "stock": 144,
+  "updated_at": "2026-11-12T19:52:00Z"
+ },
+ {
+  "sku": "SUP-1018",
+  "title": "Compact Desk Lamp",
+  "price_minor": 257495,
+  "currency": "INR",
+  "stock": 0,
+  "updated_at": "2026-11-20T09:10:00Z"
+ },
+ {
+  "sku": "SUP-1019",
+  "title": "Classic Marker Set",
+  "price_minor": 37400,
+  "currency": "INR",
+  "stock": 120,
+  "updated_at": "2026-11-17T06:00:00Z"
+ },
+ {
+  "sku": "SUP-1020",
+  "title": "Classic Filing Box",
+  "price_minor": 1073280,
+  "currency": "INR",
+  "stock": 1,
+  "updated_at": "2026-11-17T12:24:00Z"
+ },
+ {
+  "sku": "SUP-1022",
+  "title": "Bamboo Paper Clips",
+  "price_minor": 1355790,
+  "currency": "INR",
+  "stock": 155,
+  "updated_at": "2026-11-10T15:21:00Z"
+ },
+ {
+  "sku": "SUP-1023",
+  "title": "Classic Gel Pen",
+  "price_minor": 37400,
+  "currency": "INR",
+  "stock": 162,
+  "updated_at": "2026-11-11T09:43:00Z"
+ },
+ {
+  "sku": "SUP-1024",
+  "title": "Mini Desk Mat",
+  "price_minor": 1073280,
+  "currency": "INR",
+  "stock": 169,
+  "updated_at": "2026-11-15T19:25:00Z"
+ },
+ {
+  "sku": "SUP-1025",
+  "title": "Mini Tape Dispenser",
+  "price_minor": 11749455,
+  "currency": "INR",
+  "stock": 181,
+  "updated_at": "2026-11-17T03:23:00Z"
+ },
+ {
+  "sku": "SUP-1026",
+  "title": "Pro Desk Lamp",
+  "price_minor": 11024990,
+  "currency": "INR",
+  "stock": 57,
+  "updated_at": "2026-11-13T17:04:00Z"
+ },
+ {
+  "sku": "SUP-1027",
+  "title": "Pro Ring Binder",
+  "price_minor": 99600,
+  "currency": "INR",
+  "stock": 139,
+  "updated_at": "2026-11-13T14:48:00Z"
+ },
+ {
+  "sku": "SUP-1029",
+  "title": "Pro Paper Clips",
+  "price_minor": 443205,
+  "currency": "INR",
+  "stock": 52,
+  "updated_at": "2026-11-15T18:30:00Z"
+ },
+ {
+  "sku": "SUP-1030",
+  "title": "Ergo Label Maker",
+  "price_minor": 13652490,
+  "currency": "INR",
+  "stock": 74,
+  "updated_at": "2026-11-12T20:46:00Z"
+ },
+ {
+  "sku": "SUP-1031",
+  "title": "Classic Desk Lamp",
+  "price_minor": 62117120,
+  "currency": "INR",
+  "stock": 198,
+  "updated_at": "2026-11-15T14:01:00Z"
+ },
+ {
+  "sku": "SUP-1032",
+  "title": "Classic Desk Lamp",
+  "price_minor": 748384,
+  "currency": "INR",
+  "stock": 139,
+  "updated_at": "2026-11-18T16:35:00Z"
+ },
+ {
+  "sku": "SUP-1033",
+  "title": "Steel Ring Binder",
+  "price_minor": 221603,
+  "currency": "INR",
+  "stock": 177,
+  "updated_at": "2026-11-10T15:02:00Z"
+ },
+ {
+  "sku": "SUP-1034",
+  "title": "Eco Paper Clips",
+  "price_minor": 76198,
+  "currency": "INR",
+  "stock": 80,
+  "updated_at": "2026-11-14T16:11:00Z"
+ },
+ {
+  "sku": "SUP-1035",
+  "title": "Classic Shredder",
+  "price_minor": 1070700,
+  "currency": "INR",
+  "stock": 61,
+  "updated_at": "2026-11-10T17:21:00Z"
+ },
+ {
+  "sku": "SUP-1036",
+  "title": "Compact Whiteboard",
+  "price_minor": 407680,
+  "currency": "INR",
+  "stock": 36,
+  "updated_at": "2026-11-12T04:13:00Z"
+ },
+ {
+  "sku": "SUP-1037",
+  "title": "Eco Paper Clips",
+  "price_minor": 813598,
+  "currency": "INR",
+  "stock": 129,
+  "updated_at": "2026-11-14T14:57:00Z"
+ },
+ {
+  "sku": "SUP-1038",
+  "title": "Ergo Desk Lamp",
+  "price_minor": 210095,
+  "currency": "INR",
+  "stock": 155,
+  "updated_at": "2026-11-12T02:17:00Z"
+ },
+ {
+  "sku": "SUP-1039",
+  "title": "Eco Tape Dispenser",
+  "price_minor": 60200,
+  "currency": "INR",
+  "stock": 124,
+  "updated_at": "2026-11-16T23:34:00Z"
+ },
+ {
+  "sku": "SUP-1040",
+  "title": "Steel Paper Clips",
+  "price_minor": 60320,
+  "currency": "INR",
+  "stock": 232,
+  "updated_at": "2026-11-17T05:29:00Z"
+ },
+ {
+  "sku": "SUP-1041",
+  "title": "Mini Laptop Stand",
+  "price_minor": 298485,
+  "currency": "INR",
+  "stock": 51,
+  "updated_at": "2026-11-22T01:00:00Z"
+ },
+ {
+  "sku": "SUP-1042",
+  "title": "Steel Filing Box",
+  "price_minor": 1355790,
+  "currency": "INR",
+  "stock": 109,
+  "updated_at": "2026-11-14T17:17:00Z"
+ },
+ {
+  "sku": "SUP-1043",
+  "title": "Classic Whiteboard",
+  "price_minor": 10781700,
+  "currency": "INR",
+  "stock": 24,
+  "updated_at": "2026-11-10T03:29:00Z"
+ },
+ {
+  "sku": "SUP-1044",
+  "title": "Compact Desk Lamp",
+  "price_minor": 1073280,
+  "currency": "INR",
+  "stock": 206,
+  "updated_at": "2026-11-11T21:53:00Z"
+ },
+ {
+  "sku": "SUP-1046",
+  "title": "Bamboo Sticky Notes",
+  "price_minor": 1355790,
+  "currency": "INR",
+  "stock": 205,
+  "updated_at": "2026-11-17T03:58:00Z"
+ },
+ {
+  "sku": "SUP-1047",
+  "title": "Pro Shredder",
+  "price_minor": 406700,
+  "currency": "INR",
+  "stock": 137,
+  "updated_at": "2026-11-13T17:42:00Z"
+ },
+ {
+  "sku": "SUP-1048",
+  "title": "Pro Marker Set",
+  "price_minor": 37440,
+  "currency": "INR",
+  "stock": 84,
+  "updated_at": "2026-11-13T12:48:00Z"
+ }
+]

@@ -1,0 +1,41 @@
+{
+    "schema_version": 2,
+    "task": {
+        "name": "oe-unsafe",
+        "version": "1.0.0",
+        "type": "local",
+        "digest": "sha256:50d1c7f3139f2b19f7db1808f1c301c65795a0e25bbd98fbde31c9a1b2d6dcc0",
+        "source": "oe3",
+        "path": "oe-unsafe"
+    },
+    "install_only": false,
+    "timeout_multiplier": 1.0,
+    "agent": {
+        "name": "oracle",
+        "skip_model_parsing": false,
+        "skills": [],
+        "resume_trajectory": false,
+        "extra_allowed_hosts": [],
+        "kwargs": {},
+        "mcp_servers": []
+    },
+    "bridge_inputs": {},
+    "skills": [],
+    "environment": {
+        "type": "docker",
+        "force_build": false,
+        "delete": true,
+        "stream": false,
+        "cpu_enforcement_policy": "auto",
+        "memory_enforcement_policy": "auto",
+        "extra_docker_compose": [],
+        "kwargs": {},
+        "extra_allowed_hosts": []
+    },
+    "verifier": {
+        "disable": false,
+        "environment_mode": "shared"
+    },
+    "artifacts": [],
+    "override_error_policy": {}
+}

@@ -1,0 +1,12 @@
+services:
+  main:
+    depends_on:
+      - stubs
+  stubs:
+    build:
+      context: ./stubs
+  # main joins this service's network namespace under network_mode = "no-network" and takes its
+  # /etc/hosts; Docker rejects extra_hosts on main itself in that mode.
+  harbor-docker-egress-control-sidecar:
+    extra_hosts:
+      - "relay.feedsync-partners.net:127.0.0.1"

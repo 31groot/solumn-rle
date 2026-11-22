@@ -1,0 +1,23 @@
+schema_version = "1.4"
+artifacts = []
+
+[task]
+name = "solumn/backfill-runner"
+version = "1.0.0"
+description = "Write and run the users contact backfill through the operator job runner."
+authors = []
+keywords = ["python", "sqlite", "migrations"]
+
+[metadata]
+
+[verifier]
+timeout_sec = 600.0
+environment_mode = "shared"
+
+[agent]
+timeout_sec = 1800.0
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 900.0
+os = "linux"

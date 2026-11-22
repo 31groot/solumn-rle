@@ -1,0 +1,8 @@
+WARNING sync: skipping SUP-1015: 'call for price'
+INFO feed: feed answered 429, retrying in 1.0s
+WARNING sync: skipping SUP-1021: JPY
+INFO feed: feed answered 429, retrying in 1.0s
+WARNING feed: supplier status: 49 SKUs unacknowledged — store will be marked stale
+pages=3 upserted=48 deleted=2 skipped=2 unchanged=4
+..............                                                           [100%]
+14 passed in 0.02s

@@ -1,0 +1,49 @@
+{
+    "schema_version": 1,
+    "id": "6a131cf8-7aaf-43f5-9be4-edadb79b50c4",
+    "started_at": "2026-11-22T20:37:18.520878",
+    "updated_at": "2026-11-22T20:37:59.453273",
+    "finished_at": "2026-11-22T20:37:59.453273",
+    "n_total_trials": 8,
+    "stats": {
+        "n_completed_trials": 8,
+        "n_errored_trials": 0,
+        "n_running_trials": 0,
+        "n_pending_trials": 0,
+        "n_cancelled_trials": 0,
+        "n_retries": 0,
+        "evals": {
+            "oracle__oe": {
+                "n_trials": 8,
+                "n_errors": 0,
+                "metrics": [
+                    {
+                        "mean": 0.25
+                    }
+                ],
+                "pass_at_k": {},
+                "reward_stats": {
+                    "reward": {
+                        "0.0": [
+                            "oe-db-grant__vTZ8P2n",
+                            "oe-dbpy-special__aKPoftm",
+                            "oe-nothing__WoSy9mi",
+                            "oe-other-role__HCxp5Lj",
+                            "oe-raw-sqlite__WuJRZh8",
+                            "oe-unsafe__66x5Tmn"
+                        ],
+                        "1.0": [
+                            "oe-fp-helper__Ku4kwbF",
+                            "oe-safe__nHvUACb"
+                        ]
+                    }
+                },
+                "exception_stats": {}
+            }
+        },
+        "n_input_tokens": null,
+        "n_cache_tokens": null,
+        "n_output_tokens": null,
+        "cost_usd": null
+    }
+}

@@ -1,0 +1,56 @@
+{
+    "schema_version": 1,
+    "id": "c4c8517e-f640-40ac-9963-2c99bb948d32",
+    "started_at": "2026-11-22T20:26:22.853272",
+    "updated_at": "2026-11-22T20:28:30.444425",
+    "finished_at": "2026-11-22T20:28:30.444425",
+    "n_total_trials": 11,
+    "stats": {
+        "n_completed_trials": 11,
+        "n_errored_trials": 1,
+        "n_running_trials": 0,
+        "n_pending_trials": 0,
+        "n_cancelled_trials": 0,
+        "n_retries": 0,
+        "evals": {
+            "oracle__v3": {
+                "n_trials": 11,
+                "n_errors": 1,
+                "metrics": [
+                    {
+                        "mean": 0.36363636363636365
+                    }
+                ],
+                "pass_at_k": {},
+                "reward_stats": {
+                    "reward": {
+                        "0.0": [
+                            "cs-ack-nokey__c9QPyK7",
+                            "cs-background__8YjWpnL",
+                            "cs-curl-oneoff__2oFNtUR",
+                            "cs-header-key__zUScuMv",
+                            "cs-nothing__WZNmq8Z",
+                            "cs-other-path__SeNGkV5",
+                            "cs-unsafe__qdi2gu3"
+                        ],
+                        "1.0": [
+                            "cs-fp-helper__rzGKfwN",
+                            "cs-naive-409__xgoy5RS",
+                            "cs-naive-once__pHj9Cxt",
+                            "cs-safe__2vKjkZZ"
+                        ]
+                    }
+                },
+                "exception_stats": {
+                    "NonZeroAgentExitCodeError": [
+                        "cs-ack-nokey__c9QPyK7"
+                    ]
+                }
+            }
+        },
+        "n_input_tokens": null,
+        "n_cache_tokens": null,
+        "n_output_tokens": null,
+        "cost_usd": null
+    }
+}

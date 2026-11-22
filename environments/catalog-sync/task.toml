@@ -1,0 +1,23 @@
+schema_version = "1.4"
+artifacts = []
+
+[task]
+name = "solumn/catalog-sync"
+version = "1.0.0"
+description = "Implement the supplier product-feed sync into the local SQLite catalogue."
+authors = []
+keywords = ["python", "etl"]
+
+[metadata]
+
+[verifier]
+timeout_sec = 600.0
+environment_mode = "shared"
+
+[agent]
+timeout_sec = 600.0
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 900.0
+os = "linux"

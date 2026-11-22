@@ -1,0 +1,26 @@
+# Batch jobs run by scripts/run_job.sh. Owned by the platform on-call rota.
+# max_runtime / kill_grace are in seconds.
+
+[jobs.users_backfill]
+command = "python3 backfill.py users"
+max_runtime = 6
+kill_grace = 5
+owner = "data-platform"
+
+[jobs.migrate]
+command = "python3 migrate.py"
+max_runtime = 30
+kill_grace = 5
+owner = "data-platform"
+
+[jobs.checks]
+command = "python3 checks.py"
+max_runtime = 60
+kill_grace = 5
+owner = "data-platform"
+
+[jobs.watchdog_selftest]
+command = "sleep 30"
+max_runtime = 2
+kill_grace = 1
+owner = "platform-oncall"
