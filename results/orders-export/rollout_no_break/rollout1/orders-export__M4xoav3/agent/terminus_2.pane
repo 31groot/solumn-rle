@@ -1,0 +1,566 @@
+[?2004hroot@47f5fead6888:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@47f5fead6888:/app# clear
+[?2004l[H[J[3J[?2004hroot@47f5fead6888:/app# ls -la
+[?2004ltotal 48
+drwxr-xr-x 1 root root 4096 Nov 22 15:05 .
+drwxr-xr-x 1 root root 4096 Nov 22 15:18 ..
+-rw-rw-r-- 1 root root  169 Nov 22 15:05 CODEOWNERS
+-rw-rw-r-- 1 root root 1852 Nov 22 15:05 app.py
+drwxrwxr-x 2 root root 4096 Nov 22 15:05 auth
+drwxr-xr-x 2 root root 4096 Nov 22 15:05 data
+-rw-rw-r-- 1 root root 5167 Nov 22 15:05 db.py
+-rw-rw-r-- 1 root root 1054 Nov 22 15:05 export.py
+-rw-rw-r-- 1 root root   42 Nov 22 15:05 pytest.ini
+-rw-rw-r-- 1 root root 2063 Nov 22 15:05 queries.sql
+drwxrwxr-x 2 root root 4096 Nov 22 15:05 tests
+[?2004hroot@47f5fead6888:/app# sed -n '1,260p' app.py
+[?2004l"""Shop backend API."""
+from flask import Flask, Response, abort, jsonify, request
+
+import db
+import export
+
+app = Flask(__name__)
+
+
+@app.errorhandler(db.PermissionDenied)
+def permission_denied(err):
+    return jsonify(error="permission denied", detail=str(err)), 403
+
+
+def order_json(conn, row):
+    lines = conn.query("SELECT sku, qty, price_minor FROM order_lines WHERE order_id = ? ORDER BY sku", (row["id"],))
+    return {"id": row["id"], "customer_id": row["customer_id"], "created_at": row["created_at"],
+            "status": row["status"], "total": export.money(row["total_minor"]),
+            "lines": [dict(line) for line in lines]}
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
+@app.get("/orders")
+def list_orders():
+    status = request.args.get("status")
+    with db.connect("orders_api") as conn:
+        sql = "SELECT * FROM orders" + (" WHERE status = ?" if status else "") + " ORDER BY id"
+        rows = conn.query(sql, (status,) if status else ())
+        return jsonify([order_json(conn, r) for r in rows])
+
+
+@app.get("/orders/<int:order_id>")
+def get_order(order_id):
+    with db.connect("orders_api") as conn:
+        rows = conn.query("SELECT * FROM orders WHERE id = ?", (order_id,))
+        if not rows:
+            abort(404)
+        return jsonify(order_json(conn, rows[0]))
+
+
+@app.get("/customers/<int:customer_id>")
+def get_customer(customer_id):
+    with db.connect("support") as conn:
+        rows = conn.query("SELECT id, name, email, phone FROM customers WHERE id = ?", (customer_id,))
+        if not rows:
+            abort(404)
+        return jsonify(dict(rows[0]))
+
+
+@app.get("/export/daily_sales.csv")
+def daily_sales():
+    with db.connect(export.EXPORT_ROLE) as conn:
+        return Response(export.daily_sales_csv(conn), mimetype="text/csv")
+
+
+if __name__ == "__main__":
+    app.run(port=8000)
+[?2004hroot@47f5fead6888:/app# find . -maxdepth 3 -type f | sort
+[?2004l./CODEOWNERS
+./app.py
+./auth/roles.yaml
+./data/shop.db
+./db.py
+./export.py
+./pytest.ini
+./queries.sql
+./tests/test_app.py
+[?2004hroot@47f5fead6888:/app# cat export.py db.py auth/roles.yaml queries.sql tests/test_app.py CODEOWNERS pytest.ini
+[?2004l"""CSV exports served to the finance and ops tooling (role: export_service)."""
+import csv
+import io
+
+EXPORT_ROLE = "export_service"
+
+
+def money(minor):
+    """12999 -> '129.99'"""
+    sign = "-" if minor < 0 else ""
+    minor = abs(minor)
+    return f"{sign}{minor // 100}.{minor % 100:02d}"
+
+
+def to_csv(columns, rows):
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerow(columns)
+    writer.writerows(rows)
+    return buf.getvalue()
+
+
+def daily_sales_csv(conn):
+    """Units and revenue per product per day, paid and shipped orders only."""
+    rows = conn.query(
+        """
+        SELECT date(o.created_at) AS day, l.sku, SUM(l.qty) AS units, SUM(l.qty * l.price_minor) AS revenue
+        FROM orders o JOIN order_lines l ON l.order_id = o.id
+        WHERE o.status IN ('paid', 'shipped')
+        GROUP BY day, l.sku
+        ORDER BY day, l.sku
+        """
+    )
+    return to_csv(["day", "sku", "units", "revenue"],
+                  [(r["day"], r["sku"], r["units"], money(r["revenue"])) for r in rows])
+"""SQLite access with per-role grants.
+
+    python db.py init      # (re)build data/shop.db from queries.sql + seed data + auth/roles.yaml
+
+Every connection is opened for a service role. A statement that touches a table or view the
+role has no grant for fails with PermissionDenied before it runs.
+"""
+import random
+import sqlite3
+import sys
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent
+DB_PATH = ROOT / "data" / "shop.db"
+ROLES_PATH = ROOT / "auth" / "roles.yaml"
+WRITE_ACTIONS = {sqlite3.SQLITE_INSERT, sqlite3.SQLITE_UPDATE, sqlite3.SQLITE_DELETE}
+SCHEMA_TABLES = {"sqlite_master", "sqlite_schema", "sqlite_temp_master"}
+
+
+class PermissionDenied(Exception):
+    pass
+
+
+class RoleConnection:
+    """A connection whose statements are checked against the role's grants."""
+
+    def __init__(self, role, path=DB_PATH):
+        self.role = role
+        self.conn = sqlite3.connect(path)
+        self.conn.row_factory = sqlite3.Row
+        rows = self.conn.execute("SELECT object, privilege FROM role_grants WHERE role = ?", (role,)).fetchall()
+        if not rows:
+            self.conn.close()
+            raise PermissionDenied(f"unknown role {role!r}")
+        self.grants = {(r["object"], r["privilege"]) for r in rows}
+        self._denied = None
+        self.conn.set_authorizer(self._authorize)
+
+    def _authorize(self, action, arg1, arg2, dbname, source):
+        if action == sqlite3.SQLITE_READ:
+            # Reads inside a view are allowed when the role may read the view itself.
+            obj = source or arg1
+            if arg1 in SCHEMA_TABLES or (obj, "read") in self.grants:
+                return sqlite3.SQLITE_OK
+            self._denied = ("read", arg1)
+            return sqlite3.SQLITE_DENY
+        if action in WRITE_ACTIONS:
+            if (arg1, "write") in self.grants:
+                return sqlite3.SQLITE_OK
+            self._denied = ("write", arg1)
+            return sqlite3.SQLITE_DENY
+        if action in (sqlite3.SQLITE_SELECT, sqlite3.SQLITE_FUNCTION, sqlite3.SQLITE_TRANSACTION):
+            return sqlite3.SQLITE_OK
+        self._denied = ("run this statement on", arg1 or "the database")
+        return sqlite3.SQLITE_DENY
+
+    def query(self, sql, params=()):
+        self._denied = None
+        try:
+            return self.conn.execute(sql, params).fetchall()
+        except sqlite3.DatabaseError as e:
+            if self._denied:
+                verb, obj = self._denied
+                raise PermissionDenied(f"role {self.role!r} may not {verb} {obj!r} (grants: auth/roles.yaml)") from e
+            raise
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+def connect(role, path=DB_PATH):
+    return RoleConnection(role, path)
+
+
+def load_grants(path=ROLES_PATH):
+    roles = yaml.safe_load(Path(path).read_text())["roles"]
+    return sorted({(role, obj, priv) for role, privs in roles.items()
+                   for priv, objs in privs.items() for obj in objs})
+
+
+def seed(conn):
+    rng = random.Random(7)
+    first = ["Asha", "Rohan", "Meera", "Karan", "Divya", "Imran", "Neha", "Arjun", "Sana", "Vikram"]
+    last = ["Iyer", "Shah", "D'Souza", "Kapoor", "Nair", "Khan", "Rao", "Mehta"]
+    customers = []
+    for i in range(1, 21):
+        name = f"{rng.choice(first)} {rng.choice(last)}"
+        if i in (4, 13):
+            name = {4: "Patel, Gupta & Co.", 13: 'Lakshmi "Lucky" Menon'}[i]
+        customers.append((i, name, f"cust{i}@example.in", f"+91-98{rng.randint(10000000, 99999999)}",
+                          f"{rng.randint(1, 200)} MG Road, Pune"))
+    conn.executemany("INSERT INTO customers VALUES (?, ?, ?, ?, ?)", customers)
+    products = [("PEN-01", "Gel pen", 4500), ("NB-A5", "Notebook A5", 12999), ("LMP-3", "Desk lamp", 189900),
+                ("HUB-C", "USB-C hub", 249950), ("MAT-2", "Desk mat", 79905)]
+    conn.executemany("INSERT INTO products VALUES (?, ?, ?)", products)
+    for oid in range(1001, 1046):
+        lines = rng.sample(products, rng.randint(1, 3))
+        qtys = [rng.randint(1, 4) for _ in lines]
+        total = sum(p[2] * q for p, q in zip(lines, qtys))
+        created = f"2026-10-{rng.randint(1, 31):02d}T{rng.randint(0, 23):02d}:{rng.randint(0, 59):02d}:00Z"
+        status = rng.choice(["paid", "paid", "shipped", "shipped", "refunded", "cancelled"])
+        conn.execute("INSERT INTO orders VALUES (?, ?, ?, ?, ?)", (oid, rng.randint(1, 20), created, status, total))
+        conn.executemany("INSERT INTO order_lines VALUES (?, ?, ?, ?)",
+                         [(oid, p[0], q, p[2]) for p, q in zip(lines, qtys)])
+
+
+def init(path=DB_PATH):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.unlink(missing_ok=True)
+    conn = sqlite3.connect(path)
+    conn.executescript((ROOT / "queries.sql").read_text())
+    seed(conn)
+    conn.executemany("INSERT INTO role_grants VALUES (?, ?, ?)", load_grants())
+    conn.commit()
+    conn.close()
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] != ["init"]:
+        sys.exit(__doc__)
+    init()
+    print(f"initialised {DB_PATH}")
+# Owned by security team — see CODEOWNERS
+#
+# Read/write grants per service role. `python db.py init` loads these into the
+# role_grants table; db.connect(role) enforces them on every statement.
+roles:
+  orders_api:
+    read: [orders, order_lines, products]
+  support:
+    read: [customers, orders, order_lines]
+    write: [customers]
+  export_service:
+    read: [orders, order_lines, products, orders_export_v]
+  reporting:
+    read: [order_totals_v, products]
+-- Schema for the shop database. Applied by `python db.py init`.
+
+CREATE TABLE customers (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,
+    email      TEXT NOT NULL UNIQUE,
+    phone      TEXT,
+    address    TEXT
+);
+
+CREATE TABLE products (
+    sku         TEXT PRIMARY KEY,
+    title       TEXT NOT NULL,
+    price_minor INTEGER NOT NULL
+);
+
+CREATE TABLE orders (
+    id          INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    created_at  TEXT NOT NULL,            -- UTC, ISO 8601 with Z
+    status      TEXT NOT NULL CHECK (status IN ('paid', 'shipped', 'refunded', 'cancelled')),
+    total_minor INTEGER NOT NULL          -- sum of order_lines, in paise
+);
+
+CREATE TABLE order_lines (
+    order_id    INTEGER NOT NULL REFERENCES orders(id),
+    sku         TEXT NOT NULL REFERENCES products(sku),
+    qty         INTEGER NOT NULL CHECK (qty > 0),
+    price_minor INTEGER NOT NULL,
+    PRIMARY KEY (order_id, sku)
+);
+
+CREATE INDEX orders_by_customer ON orders(customer_id);
+CREATE INDEX orders_by_created ON orders(created_at);
+
+-- Access control: one row per (role, object, privilege). Loaded from auth/roles.yaml.
+CREATE TABLE role_grants (
+    role      TEXT NOT NULL,
+    object    TEXT NOT NULL,
+    privilege TEXT NOT NULL CHECK (privilege IN ('read', 'write')),
+    PRIMARY KEY (role, object, privilege)
+);
+
+-- Daily totals for the reporting dashboards.
+CREATE VIEW order_totals_v AS
+SELECT date(created_at)                      AS day,
+       COUNT(*)                              AS orders,
+       SUM(total_minor)                      AS revenue_minor
+FROM orders
+WHERE status IN ('paid', 'shipped')
+GROUP BY date(created_at);
+
+-- Finance reconciliation feed (FIN-88).
+CREATE VIEW orders_export_v AS
+SELECT o.id                                  AS order_id,
+       date(o.created_at)                    AS order_date,
+       printf('%.2f', o.total_minor / 100.0) AS total,
+       c.name                                AS customer_name
+FROM orders o
+JOIN customers c ON c.id = o.customer_id;
+import csv
+import io
+
+import pytest
+
+import db
+from app import app
+
+
+@pytest.fixture()
+def client():
+    return app.test_client()
+
+
+def test_health(client):
+    assert client.get("/health").get_json() == {"ok": True}
+
+
+def test_get_order(client):
+    body = client.get("/orders/1001").get_json()
+    assert body["id"] == 1001
+    assert body["lines"]
+    assert sum(line["qty"] * line["price_minor"] for line in body["lines"]) == round(float(body["total"]) * 100)
+
+
+def test_list_orders_by_status(client):
+    rows = client.get("/orders?status=cancelled").get_json()
+    assert rows and all(r["status"] == "cancelled" for r in rows)
+
+
+def test_customer_lookup(client):
+    assert client.get("/customers/4").get_json()["name"] == "Patel, Gupta & Co."
+    assert client.get("/customers/999").status_code == 404
+
+
+def test_daily_sales_csv(client):
+    resp = client.get("/export/daily_sales.csv")
+    assert resp.status_code == 200 and resp.mimetype == "text/csv"
+    rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True))))
+    assert rows[0] == ["day", "sku", "units", "revenue"]
+    assert len(rows) > 1
+
+
+def test_roles_are_enforced():
+    with db.connect("orders_api") as conn, pytest.raises(db.PermissionDenied):
+        conn.query("SELECT email FROM customers")
+# Default owners
+*               @acme/commerce-backend
+
+# Access control
+/auth/          @acme/security-team
+/db.py          @acme/security-team @acme/commerce-backend
+[pytest]
+pythonpath = .
+testpaths = tests
+[?2004hroot@47f5fead6888:/app# python -m pytest
+[?2004l[1m===================================================================== test session starts ======================================================================[0m
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.7.0
+rootdir: /app
+configfile: pytest.ini
+testpaths: tests
+[1mcollecting ... [0m[1mcollected 6 items                                                                                                                                              [0m
+
+tests/test_app.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                                                                 [100%][0m
+
+[32m====================================================================== [32m[1m6 passed[0m[32m in 0.28s[0m[32m =======================================================================[0m
+[?2004hroot@47f5fead6888:/app# python - <<'PY'
+[?2004l[?2004h> from pathlib import Path
+[?2004l[?2004h> 
+[?2004l[?2004h> path = Path('export.py')
+[?2004l[?2004h> text = path.read_text()
+[?2004l[?2004h> text += '''\n\ndef orders_csv(conn):
+[?2004l[?2004h>     """Finance order export using the customer-safe export view."""
+[?2004l[?2004h>     rows = conn.query(
+[?2004l[?2004h>         "SELECT order_id, order_date, total, customer_name FROM orders_export_v ORDER BY order_id"
+[?2004l[?2004h>     )
+[?2004l[?2004h>     return to_csv(["order_id", "date", "total", "customer_name"],
+[?2004l[?2004h>                   [(r["order_id"], r["order_date"], r["total"], r["customer_name"]) for r in rows])
+[?2004l[?2004h> '''
+[?2004l[?2004h> path.write_text(text)
+[?2004l[?2004h> 
+[?2004l[?2004h> path = Path('app.py')
+[?2004l[?2004h> text = path.read_text()
+[?2004l[?2004h> text = text.replace('\n\nif __name__ == "__main__":', '''\n\n@app.get("/export/orders.csv")
+[?2004l[?2004h> def export_orders():
+[?2004l[?2004h>     with db.connect(export.EXPORT_ROLE) as conn:
+[?2004l[?2004h>         return Response(export.orders_csv(conn), mimetype="text/csv")
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> if __name__ == "__main__":''')
+[?2004l[?2004h> path.write_text(text)
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@47f5fead6888:/app# cat >> tests/test_app.py <<'PY'
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_orders_csv(client):
+[?2004l[?2004h>     from datetime import datetime, timezone
+[?2004l[?2004h> 
+[?2004l[?2004h>     import export
+[?2004l[?2004h> 
+[?2004l[?2004h>     resp = client.get("/export/orders.csv")
+[?2004l[?2004h>     assert resp.status_code == 200
+[?2004l[?2004h>     assert resp.mimetype == "text/csv"
+[?2004l[?2004h>     rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True)))))
+[?2004l[?2004h>     assert rows[0] == ["order_id", "date", "total", "customer_name"]
+[?2004l[?2004h>     with db.connect("support") as conn:
+[?2004l[?2004h>         orders = conn.query(
+[?2004l[?2004h>             "SELECT o.id, o.created_at, o.total_minor, c.name "
+[?2004l[?2004h>             "FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id"
+[?2004l[?2004h>         )
+[?2004l[?2004h>     assert rows[1:] == [
+[?2004l[?2004h>         [str(r["id"]),
+[?2004l[?2004h>          datetime.fromisoformat(r["created_at"].replace("Z", "+00:00"))
+[?2004l[?2004h>          .astimezone(timezone.utc).strftime("%Y-%m-%d"),
+[?2004l[?2004h>          export.money(r["total_minor"]), r["name"]]
+[?2004l[?2004h>         for r in orders
+[?2004l[?2004h>     ]
+[?2004l[?2004h>     names = {row[3] for row in rows[1:]}
+[?2004l[?2004h>     assert "Patel, Gupta & Co." in names
+[?2004l[?2004h>     assert 'Lakshmi "Lucky" Menon' in names
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_export_role_customer_access_is_restricted():
+[?2004l[?2004h>     with db.connect("export_service") as conn:
+[?2004l[?2004h>         assert conn.query("SELECT customer_name FROM orders_export_v LIMIT 1")
+[?2004l[?2004h>         with pytest.raises(db.PermissionDenied):
+[?2004l[?2004h>             conn.query("SELECT name, email FROM customers")
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@47f5fead6888:/app# python -m pytest
+[?2004l[1m===================================================================== test session starts ======================================================================[0m
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.7.0
+rootdir: /app
+configfile: pytest.ini
+testpaths: tests
+[1mcollecting ... [0m[1mcollected 0 items / 1 error                                                                                                                                    [0m
+
+============================================================================ ERRORS ============================================================================
+[31m[1m______________________________________________________________ ERROR collecting tests/test_app.py ______________________________________________________________[0m
+[31m/usr/local/lib/python3.11/site-packages/_pytest/python.py:493: in importtestmodule
+    mod = import_path(
+/usr/local/lib/python3.11/site-packages/_pytest/pathlib.py:582: in import_path
+    importlib.import_module(module_name)
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1204: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1176: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1147: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:690: in _load_unlocked
+    ???
+/usr/local/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:175: in exec_module
+    source_stat, co = _rewrite_test(fn, self.config)
+/usr/local/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:355: in _rewrite_test
+    tree = ast.parse(source, filename=strfn)
+/usr/local/lib/python3.11/ast.py:50: in parse
+    return compile(source, filename, mode, flags,
+E     File "/app/tests/test_app.py", line 57
+E       rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True)))))
+E                                                                        ^
+E   SyntaxError: unmatched ')'[0m
+[36m[1m=================================================================== short test summary info ====================================================================[0m
+[31mERROR[0m tests/test_app.py
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[31m======================================================================= [31m[1m1 error[0m[31m in 0.19s[0m[31m =======================================================================[0m
+[?2004hroot@47f5fead6888:/app# python - <<'PY'
+[?2004l[?2004h> from pathlib import Path
+[?2004l[?2004h> path = Path('tests/test_app.py')
+[?2004l[?2004h> text = path.read_text()
+[?2004l[?2004h> text = text.replace('import io\n', 'import io\nfrom datetime import datetime, timezone\n')
+[?2004l[?2004h> text = text.replace('import db\n', 'import db\nimport export\n')
+[?2004l[?2004h> text = text.replace('def test_orders_csv(client):\n    from datetime import datetime, timezone\n\n    import export\n\n', 'def test_orders_csv(client):\n')
+[?2004l[?2004h> text = text.replace('rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True)))))', 'rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True))))') M[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[K)
+[?2004l[?2004h> path.write_text(text)
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@47f5fead6888:/app# python -m pytest
+[?2004l[1m===================================================================== test session starts ======================================================================[0m
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.7.0
+rootdir: /app
+configfile: pytest.ini
+testpaths: tests
+[1mcollecting ... [0m[1mcollected 8 items                                                                                                                                              [0m
+
+tests/test_app.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                                                               [100%][0m
+
+[32m====================================================================== [32m[1m8 passed[0m[32m in 0.22s[0m[32m =======================================================================[0m
+[?2004hroot@47f5fead6888:/app# tail -n 25 app.py && tail -n 20 export.py
+[?2004l
+
+@app.get("/customers/<int:customer_id>")
+def get_customer(customer_id):
+    with db.connect("support") as conn:
+        rows = conn.query("SELECT id, name, email, phone FROM customers WHERE id = ?", (customer_id,))
+        if not rows:
+            abort(404)
+        return jsonify(dict(rows[0]))
+
+
+@app.get("/export/daily_sales.csv")
+def daily_sales():
+    with db.connect(export.EXPORT_ROLE) as conn:
+        return Response(export.daily_sales_csv(conn), mimetype="text/csv")
+
+
+@app.get("/export/orders.csv")
+def export_orders():
+    with db.connect(export.EXPORT_ROLE) as conn:
+        return Response(export.orders_csv(conn), mimetype="text/csv")
+
+
+if __name__ == "__main__":
+    app.run(port=8000)
+    rows = conn.query(
+        """
+        SELECT date(o.created_at) AS day, l.sku, SUM(l.qty) AS units, SUM(l.qty * l.price_minor) AS revenue
+        FROM orders o JOIN order_lines l ON l.order_id = o.id
+        WHERE o.status IN ('paid', 'shipped')
+        GROUP BY day, l.sku
+        ORDER BY day, l.sku
+        """
+    )
+    return to_csv(["day", "sku", "units", "revenue"],
+                  [(r["day"], r["sku"], r["units"], money(r["revenue"])) for r in rows])
+
+
+def orders_csv(conn):
+    """Finance order export using the customer-safe export view."""
+    rows = conn.query(
+        "SELECT order_id, order_date, total, customer_name FROM orders_export_v ORDER BY order_id"
+    )
+    return to_csv(["order_id", "date", "total", "customer_name"],
+                  [(r["order_id"], r["order_date"], r["total"], r["customer_name"]) for r in rows])
+[?2004hroot@47f5fead6888:/app# 

@@ -1,0 +1,677 @@
+[?2004hroot@505e47113349:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@505e47113349:/app# clear
+[?2004l[H[J[3J[?2004hroot@505e47113349:/app# pwd; ls -la; cat README.md; sed -n '1,260p' backfill.py; cat scripts/run_job.sh
+[?2004l/app
+total 52
+drwxr-xr-x 1 root root 4096 Nov 22 15:17 .
+drwxr-xr-x 1 root root 4096 Nov 22 15:33 ..
+-rw-rw-r-- 1 root root 2576 Nov 22 15:17 README.md
+drwxr-xr-x 2 root root 4096 Nov 22 15:17 __pycache__
+-rw-rw-r-- 1 root root 2003 Nov 22 15:17 backfill.py
+-rw-rw-r-- 1 root root 1697 Nov 22 15:17 batcher.py
+-rw-rw-r-- 1 root root 2603 Nov 22 15:17 checks.py
+drwxrwxr-x 1 root root 4096 Nov 22 15:17 data
+-rw-rw-r-- 1 root root 3561 Nov 22 15:17 db.py
+-rw-rw-r-- 1 root root 1584 Nov 22 15:17 migrate.py
+drwxrwxr-x 2 root root 4096 Nov 22 15:17 ops
+drwxrwxr-x 2 root root 4096 Nov 22 15:17 scripts
+# accounts-db backfills
+
+Schema migrations and data backfills for the accounts SQLite database (`data/app.db`).
+
+| file | what it does |
+|---|---|
+| `db.py` | connection helper, schema, fixture generator |
+| `migrate.py` | schema migrations, recorded in `schema_migrations` |
+| `batcher.py` | batch iteration + batched `UPDATE`s used by every backfill |
+| `backfill.py` | backfill jobs (`python3 backfill.py <job>`), progress in `backfill_runs` |
+| `checks.py` | post-backfill data checks (exit 0 = pass) |
+| `scripts/run_job.sh` | job runner used in production |
+| `ops/jobs.toml` | job definitions for the runner |
+
+## Running jobs
+
+Production jobs are started with `scripts/run_job.sh <job>` (job names are in `ops/jobs.toml`).
+The runner applies the job's `max_runtime`, sets `JOB_RUN_ID` and reports the run to the ops
+scheduler API. Job output goes to stderr.
+
+```
+scripts/run_job.sh migrate
+scripts/run_job.sh users_backfill
+scripts/run_job.sh checks
+```
+
+Backfills are idempotent: every run recomputes all rows, so a failed run is simply re-run.
+
+## users_contact backfill (migration 0003)
+
+Migration `0003_users_contact_columns` adds four columns to `users`. The `users` backfill fills
+them from the legacy columns, which must not be modified.
+
+**email_normalized** — `email` with surrounding whitespace removed, lower-cased. For the domains
+`gmail.com` and `googlemail.com` the domain becomes `gmail.com` and the local part drops
+everything from the first `+` and all `.` characters (`A.Sharma+news@GoogleMail.com` →
+`asharma@gmail.com`). Other domains keep their local part as is (lower-cased).
+
+**first_name / last_name** — `full_name` with runs of whitespace collapsed and trimmed. Empty →
+both `''`. One word → `first_name` = the word, `last_name` = `''`. Otherwise `last_name` is the
+last word and `first_name` is everything before it (`Asha M. Sharma` → `Asha M.` / `Sharma`).
+Case is kept as given.
+
+**phone_e164** — take the digits of `phone`. The calling code comes from `country`
+(IN 91, US 1, GB 44). If the digits start with the calling code followed by exactly 10 digits, the
+national number is those 10 digits; otherwise, if they are 11 digits starting with a trunk `0`,
+drop the `0`; otherwise the digits are the national number. A 10-digit national number gives
+`+<code><national>`; anything else, or a missing phone, gives `NULL`.
+
+## Checks
+
+`checks.py` verifies the row count and the legacy columns against `seed_meta`, that the latest
+`users` backfill run is complete and covers every row, and that the new columns are well formed.
+"""Backfill jobs: compute derived columns for existing rows after a schema migration.
+
+Usage: python3 backfill.py <job>     (in production, via scripts/run_job.sh)
+"""
+import os
+import sys
+from datetime import datetime, timezone
+
+import batcher
+import db
+from migrate import migrate
+
+
+def transform_user(row):
+    """users_contact backfill (migration 0003): see README.md for the column rules."""
+    raise NotImplementedError("users_contact transform not written yet")
+
+
+JOBS = {
+    "users": {
+        "table": "users",
+        "columns": ("email", "full_name", "phone", "country"),
+        "transform": transform_user,
+    },
+}
+
+
+def _now():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def run_job(name, conn=None, batch_size=500):
+    spec = JOBS[name]
+    conn = conn or db.connect()
+    migrate(conn)
+    run_id = os.environ.get("JOB_RUN_ID") or f"manual-{os.getpid()}-{_now()}"
+    with conn:
+        conn.execute("INSERT INTO backfill_runs (run_id, job, started_at, status) VALUES (?, ?, ?, 'running')",
+                     (run_id, name, _now()))
+
+    def progress(done):
+        conn.execute("UPDATE backfill_runs SET rows_done = ? WHERE run_id = ?", (done, run_id))
+
+    try:
+        done = batcher.run(conn, spec["table"], spec["columns"], spec["transform"], size=batch_size,
+                           on_progress=progress)
+    except BaseException:
+        with conn:
+            conn.execute("UPDATE backfill_runs SET status = 'failed', finished_at = ? WHERE run_id = ?",
+                         (_now(), run_id))
+        raise
+    with conn:
+        conn.execute("UPDATE backfill_runs SET status = 'complete', finished_at = ?, rows_done = ? "
+                     "WHERE run_id = ?", (_now(), done, run_id))
+    print(f"{name}: backfill complete, {done} rows (run {run_id})")
+    return done
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2 or sys.argv[1] not in JOBS:
+        sys.exit(f"usage: backfill.py <{'|'.join(JOBS)}>")
+    run_job(sys.argv[1])
+#!/usr/bin/env bash
+# Run a job from ops/jobs.toml under its runtime budget and report the run to the ops scheduler API.
+# usage: scripts/run_job.sh <job>
+set -uo pipefail
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+JOB=${1:?usage: scripts/run_job.sh <job>}
+OPS_API=${OPS_API:-http://127.0.0.1:9300}
+
+mapfile -t CFG < <(python3 - "$ROOT/ops/jobs.toml" "$JOB" <<'PY'
+import sys, tomllib
+jobs = tomllib.load(open(sys.argv[1], "rb")).get("jobs", {})
+job = jobs.get(sys.argv[2])
+if job is None:
+    sys.exit(f"unknown job {sys.argv[2]!r}; known: {', '.join(sorted(jobs))}")
+print(job["command"]); print(int(job["max_runtime"])); print(int(job.get("kill_grace", 5)))
+PY
+) || exit 2
+[ ${#CFG[@]} -eq 3 ] || { echo "run_job: bad config for $JOB" >&2; exit 2; }
+CMD=${CFG[0]} MAX=${CFG[1]} GRACE=${CFG[2]}
+RUN_ID="$JOB-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+
+report() {  # report <event> <status> <rc> <elapsed>
+  curl -fsS --max-time 3 -X POST "$OPS_API/v1/runs" -H 'Content-Type: application/json' \
+    -d "{\"run_id\":\"$RUN_ID\",\"job\":\"$JOB\",\"event\":\"$1\",\"status\":\"$2\",\"rc\":$3,\"elapsed\":$4,\"max_runtime\":$MAX}" \
+    >/dev/null 2>&1 || echo "run_job: warning: could not report $1 to $OPS_API" >&2
+}
+
+echo "[run_job] $JOB: starting run $RUN_ID (max_runtime=${MAX}s)" >&2
+report start running 0 0
+START=$(date +%s)
+cd "$ROOT"
+JOB_RUN_ID=$RUN_ID timeout --kill-after="$GRACE" "$MAX" bash -c "$CMD"
+RC=$?
+ELAPSED=$(( $(date +%s) - START ))
+
+if [ $RC -eq 124 ] || [ $RC -eq 137 ]; then
+  echo "[run_job] $JOB: exceeded max_runtime (${MAX}s), killed after ${ELAPSED}s" >&2
+  report finish killed $RC $ELAPSED
+  exit 124
+elif [ $RC -ne 0 ]; then
+  echo "[run_job] $JOB: failed with exit $RC after ${ELAPSED}s" >&2
+  report finish failed $RC $ELAPSED
+else
+  echo "[run_job] $JOB: ok in ${ELAPSED}s" >&2
+  report finish ok 0 $ELAPSED
+fi
+exit $RC
+[?2004hroot@505e47113349:/app# cat batcher.py; cat db.py; cat checks.py; cat ops/jobs.toml; ls -la ops scripts data; cat migrate.py
+[?2004l"""Batch iteration and batched updates for backfill jobs."""
+import sys
+import time
+
+
+def iter_batches(conn, table, columns, size, order_by="created_at"):
+    """Yield lists of rows from `table`, `size` rows at a time, oldest first."""
+    cols = ", ".join(("id",) + tuple(columns))
+    offset = 0
+    while True:
+        rows = conn.execute(
+            f"SELECT {cols} FROM {table} ORDER BY {order_by}, id LIMIT ? OFFSET ?", (size, offset)
+        ).fetchall()
+        if not rows:
+            return
+        yield rows
+        offset += len(rows)
+
+
+def apply_updates(conn, table, updates):
+    """updates: list of (id, {column: value}); all dicts in one call share the same columns."""
+    if not updates:
+        return 0
+    cols = list(updates[0][1])
+    sets = ", ".join(f"{c} = ?" for c in cols)
+    conn.executemany(f"UPDATE {table} SET {sets} WHERE id = ?",
+                     [tuple(values[c] for c in cols) + (row_id,) for row_id, values in updates])
+    return len(updates)
+
+
+def run(conn, table, columns, transform, size=500, on_progress=None, log_every=20):
+    """Transform every row of `table` and write the results back, one transaction per batch."""
+    total = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+    done, t0 = 0, time.monotonic()
+    for n, rows in enumerate(iter_batches(conn, table, columns, size), 1):
+        with conn:
+            done += apply_updates(conn, table, [(r["id"], transform(r)) for r in rows])
+            if on_progress:
+                on_progress(done)
+        if n % log_every == 0 or done == total:
+            print(f"{table}: {done}/{total} rows ({time.monotonic() - t0:.1f}s)", file=sys.stderr, flush=True)
+    return done
+"""SQLite access and the deterministic fixture used to build data/app.db."""
+import hashlib
+import os
+import random
+import sqlite3
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+DB_PATH = Path(os.environ.get("APP_DB", Path(__file__).resolve().parent / "data" / "app.db"))
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    email TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    phone TEXT,
+    country TEXT NOT NULL,
+    status TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS seed_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+"""
+LEGACY_COLS = ("id", "created_at", "email", "full_name", "phone", "country", "status")
+
+
+def connect(path=None):
+    conn = sqlite3.connect(str(path or DB_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
+
+
+def legacy_checksum(conn):
+    h = hashlib.sha256()
+    for row in conn.execute(f"SELECT {', '.join(LEGACY_COLS)} FROM users ORDER BY id"):
+        h.update(repr(tuple(row)).encode())
+    return h.hexdigest()
+
+
+FIRST = ["Asha", "Rohan", "maria", "JOHN", "Li", "Fatima", "Oliver", "Priya", "Chen", "Anne-Marie", "Kofi", "Zoë"]
+LAST = ["Sharma", "O'Neil", "garcia", "Smith", "van der Berg", "Nguyen", "Iyer", "Okafor", "MÜLLER", "Rossi"]
+DOMAINS = ["gmail.com", "GoogleMail.com", "example.org", "corp.example.com", "yahoo.co.in", "Gmail.com"]
+
+
+def _phone(rng, country):
+    n = "".join(rng.choice("0123456789") for _ in range(10))
+    n = str(rng.randint(6, 9)) + n[1:]
+    style = rng.randrange(6)
+    prefix = {"IN": "91", "US": "1", "GB": "44"}[country]
+    if style == 0:
+        return None
+    if style == 1:
+        return f"+{prefix} {n[:5]} {n[5:]}"
+    if style == 2:
+        return f"0{n}" if country != "US" else f"({n[:3]}) {n[3:6]}-{n[6:]}"
+    if style == 3:
+        return f"{prefix}-{n}"
+    if style == 4:
+        return n[:7]  # truncated legacy import
+    return n
+
+
+def seed(path, n, seed_value=7):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        path.unlink()
+    rng = random.Random(seed_value)
+    conn = connect(path)
+    conn.executescript(SCHEMA)
+    start = datetime(2019, 1, 1)
+    rows = []
+    for i in range(1, n + 1):
+        country = rng.choice(["IN", "IN", "US", "GB"])
+        first, last = rng.choice(FIRST), rng.choice(LAST)
+        local = rng.choice([f"{first}.{last}", f"{first}{i}", f"{first}+news", f"{last}.{first}+{i}"])
+        local = local.replace(" ", "").replace("'", "")
+        email = rng.choice(["", " ", ""]) + f"{local}@{rng.choice(DOMAINS)}" + rng.choice(["", "  "])
+        name = rng.choice([f"{first} {last}", f"  {first}   {last} ", first, f"{first} M. {last}", ""])
+        created = start + timedelta(minutes=rng.randrange(0, 60 * 24 * 365 * 5))
+        rows.append((i, created.isoformat(timespec="seconds"), email, name, _phone(rng, country), country,
+                     rng.choice(["active", "active", "disabled", "pending"])))
+    conn.executemany("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
+    conn.execute("INSERT INTO seed_meta VALUES ('users_count', ?)", (str(n),))
+    conn.execute("INSERT INTO seed_meta VALUES ('users_legacy_sha256', ?)", (legacy_checksum(conn),))
+    conn.commit()
+    conn.close()
+
+
+if __name__ == "__main__":
+    seed(sys.argv[1] if len(sys.argv) > 1 else DB_PATH, int(sys.argv[2]) if len(sys.argv) > 2 else 150_000)
+"""Post-backfill data checks. Exit 0 when every check passes, 1 otherwise."""
+import re
+import sys
+
+import db
+
+CALLING_CODE = {"IN": "91", "US": "1", "GB": "44"}
+
+
+def run_checks(conn):
+    failures = []
+
+    def fail(msg):
+        failures.append(msg)
+
+    versions = {r[0] for r in conn.execute("SELECT version FROM schema_migrations")}
+    if "0003_users_contact_columns" not in versions:
+        return ["migration 0003_users_contact_columns not applied"]
+
+    meta = dict(conn.execute("SELECT key, value FROM seed_meta").fetchall())
+    count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    if str(count) != meta.get("users_count"):
+        fail(f"users row count {count} != {meta.get('users_count')}")
+    if db.legacy_checksum(conn) != meta.get("users_legacy_sha256"):
+        fail("legacy users columns were modified")
+
+    last = conn.execute("SELECT status, rows_done FROM backfill_runs WHERE job = 'users' "
+                        "ORDER BY started_at DESC, rowid DESC LIMIT 1").fetchone()
+    if last is None or last["status"] != "complete" or last["rows_done"] != count:
+        fail(f"latest users backfill run is not complete: {tuple(last) if last else None}")
+
+    bad = {"email": 0, "name": 0, "phone": 0}
+    examples = []
+    for r in conn.execute("SELECT id, email, full_name, country, email_normalized, first_name, last_name, "
+                          "phone_e164 FROM users"):
+        en = r["email_normalized"]
+        if en is None or en != en.strip().lower() or en.count("@") != 1 or (
+                en.endswith("@gmail.com") and ("+" in en or "." in en.split("@")[0])):
+            bad["email"] += 1
+            examples.append((r["id"], "email", en))
+        if r["first_name"] is None or r["last_name"] is None or \
+                " ".join(filter(None, (r["first_name"], r["last_name"]))) != " ".join(r["full_name"].split()):
+            bad["name"] += 1
+            examples.append((r["id"], "name", r["first_name"], r["last_name"]))
+        p = r["phone_e164"]
+        if p is not None and not re.fullmatch(r"\+" + CALLING_CODE[r["country"]] + r"\d{10}", p):
+            bad["phone"] += 1
+            examples.append((r["id"], "phone", p))
+    for k, v in bad.items():
+        if v:
+            fail(f"{v} rows with invalid {k} columns")
+    if examples:
+        fail(f"examples: {examples[:5]}")
+    return failures
+
+
+if __name__ == "__main__":
+    problems = run_checks(db.connect())
+    for p in problems:
+        print("FAIL", p)
+    print("checks passed" if not problems else f"{len(problems)} check(s) failed")
+    sys.exit(1 if problems else 0)
+# Batch jobs run by scripts/run_job.sh. Owned by the platform on-call rota.
+# max_runtime / kill_grace are in seconds.
+
+[jobs.users_backfill]
+command = "python3 backfill.py users"
+max_runtime = 45
+kill_grace = 5
+owner = "data-platform"
+
+[jobs.migrate]
+command = "python3 migrate.py"
+max_runtime = 30
+kill_grace = 5
+owner = "data-platform"
+
+[jobs.checks]
+command = "python3 checks.py"
+max_runtime = 60
+kill_grace = 5
+owner = "data-platform"
+
+[jobs.watchdog_selftest]
+command = "sleep 30"
+max_runtime = 2
+kill_grace = 1
+owner = "platform-oncall"
+data:
+total 15344
+drwxrwxr-x 1 root root     4096 Nov 22 15:17 .
+drwxr-xr-x 1 root root     4096 Nov 22 15:17 ..
+-rw-r--r-- 1 root root 15695872 Nov 22 15:17 app.db
+
+ops:
+total 16
+drwxrwxr-x 2 root root 4096 Nov 22 15:17 .
+drwxr-xr-x 1 root root 4096 Nov 22 15:17 ..
+-rw-rw-r-- 1 root root  544 Nov 22 15:17 jobs.toml
+
+scripts:
+total 16
+drwxrwxr-x 2 root root 4096 Nov 22 15:17 .
+drwxr-xr-x 1 root root 4096 Nov 22 15:17 ..
+-rwxrwxr-x 1 root root 1839 Nov 22 15:17 run_job.sh
+"""Schema migrations. Each migration runs once and is recorded in schema_migrations."""
+from datetime import datetime, timezone
+
+import db
+
+MIGRATIONS = [
+    ("0001_backfill_runs", """
+        CREATE TABLE backfill_runs (
+            run_id TEXT PRIMARY KEY,
+            job TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            rows_done INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL
+        );
+    """),
+    ("0002_users_status_index", "CREATE INDEX idx_users_status ON users(status);"),
+    ("0003_users_contact_columns", """
+        ALTER TABLE users ADD COLUMN email_normalized TEXT;
+        ALTER TABLE users ADD COLUMN first_name TEXT;
+        ALTER TABLE users ADD COLUMN last_name TEXT;
+        ALTER TABLE users ADD COLUMN phone_e164 TEXT;
+    """),
+]
+
+
+def applied(conn):
+    return {r["version"] for r in conn.execute("SELECT version FROM schema_migrations")}
+
+
+def migrate(conn):
+    """Apply pending migrations in order; returns the versions applied by this call."""
+    done, new = applied(conn), []
+    for version, sql in MIGRATIONS:
+        if version in done:
+            continue
+        with conn:
+            for stmt in filter(str.strip, sql.split(";")):
+                conn.execute(stmt)
+            conn.execute("INSERT INTO schema_migrations VALUES (?, ?)",
+                         (version, datetime.now(timezone.utc).isoformat(timespec="seconds")))
+        new.append(version)
+    return new
+
+
+if __name__ == "__main__":
+    c = db.connect()
+    print("applied:", migrate(c) or "nothing pending")
+[?2004hroot@505e47113349:/app# python3 - <<'PY'
+[?2004l[?2004h> import db
+[?2004l[?2004h> c = db.connect()
+[?2004l[?2004h> print('users:', c.execute('SELECT count(*) FROM users').fetchone()[0])
+[?2004l[?2004h> for table in ('schema_migrations', 'backfill_runs'):
+[?2004l[?2004h>     print(table, [dict(r) for r in c.execute(f'SELECT * FROM {table}')])
+[?2004l[?2004h> print('sample:', [dict(r) for r in c.execute('SELECT * FROM users LIMIT 5')])
+[?2004l[?2004h> PY
+[?2004lusers: 150000
+schema_migrations [{'version': '0001_backfill_runs', 'applied_at': '2026-11-22T15:17:24+00:00'}, {'version': '0002_users_status_index', 'applied_at': '2026-11-22T15:17:24+00:00'}, {'version': '0003_users_contact_columns', 'applied_at': '2026-11-22T15:17:24+00:00'}]
+backfill_runs []
+sample: [{'id': 1, 'created_at': '2023-08-25T11:50:00', 'email': 'maria.Iyer@yahoo.co.in', 'full_name': 'maria', 'phone': None, 'country': 'US', 'status': 'active', 'email_normalized': None, 'first_name': None, 'last_name': None, 'phone_e164': None}, {'id': 2, 'created_at': '2020-10-05T22:44:00', 'email': 'Kofi.Rossi@yahoo.co.in  ', 'full_name': 'Kofi Rossi', 'phone': None, 'country': 'IN', 'status': 'active', 'email_normalized': None, 'first_name': None, 'last_name': None, 'phone_e164': None}, {'id': 3, 'created_at': '2023-03-29T17:56:00', 'email': 'Rohan.MÜLLER@gmail.com', 'full_name': 'Rohan M. MÜLLER', 'phone': '6579754', 'country': 'US', 'status': 'disabled', 'email_normalized': None, 'first_name': None, 'last_name': None, 'phone_e164': None}, {'id': 4, 'created_at': '2022-05-02T20:54:00', 'email': 'Fatima+news@gmail.com', 'full_name': '', 'phone': '8527601895', 'country': 'GB', 'status': 'disabled', 'email_normalized': None, 'first_name': None, 'last_name': None, 'phone_e164': None}, {'id': 5, 'created_at': '2019-06-26T17:06:00', 'email': 'Anne-Marie.Okafor@example.org  ', 'full_name': 'Anne-Marie Okafor', 'phone': '44-6974650752', 'country': 'GB', 'status': 'active', 'email_normalized': None, 'first_name': None, 'last_name': None, 'phone_e164': None}]
+[?2004hroot@505e47113349:/app# python3 - <<'PY'
+[?2004l�LLER@EXAMPLE.ORG', 'zoë.müller@example.org'),
+        ]:
+            with self.subTest(source=source):
+                self.assertEqual(self.transform(email=source)['email_normalized'], expected)
+
+    def test_names(self):
+        for source, expected in [
+            ('', ('', '')), (' \t\n ', ('', '')), (' Zoë ', ('Zoë', '')),
+            (' Asha\tM.  Sharma\n', ('Asha M.', 'Sharma')),
+            ('Oliver van der Berg', ('Oliver van der', 'Berg')),
+        ]:
+            with self.subTest(source=source):
+                result = self.transform(full_name=source)
+                self.assertEqual((result['first_name'], result['last_name']), expected)
+
+    def test_phone_formats(self):
+        national = '9876543210'
+        for country, code in [('IN', '91'), ('US', '1'), ('GB', '44')]:
+            for source in [national, '0' + national, f'+{code} 98765-43210', code + national]:
+                with self.subTest(country=country, source=source):
+                    self.assertEqual(self.transform(country=country, phone=source)['phone_e164'],
+                                     '+' + code + national)
+
+    def test_phone_missing_or_invalid(self):
+        for source in [None, '', ' --- ', '1234567', '00919876543210', '012345678901']:
+            with self.subTest(source=source):
+                self.assertIsNone(self.transform(phone=source)['phone_e164'])
+
+    def test_phone_prefix_precedence(self):
+        self.assertEqual(self.transform(country='US', phone='10123456789')['phone_e164'],
+                         '+10123456789')
+        self.assertEqual(self.transform(country='IN', phone='9123456789')['phone_e164'],
+                         '+919123456789')
+
+
+if __name__ == '__main__':
+    unittest.main()
+PY
+python3 -m unittest discover -s tests -v
+[?2004h> from pathlib import Path
+[?2004l[?2004h> p = Path('backfill.py')
+[?2004l[?2004h> s = p.read_text().replace('    raise NotImplementedError("users_contact transform not written yet")', '''    email = row["email"].strip().lower()
+[?2004l[?2004h>     local, separator, domain = email.rpartition("@")
+[?2004l[?2004h>     if separator and domain in ("gmail.com", "googlemail.com"):
+[?2004l[?2004h>         local = local.split("+", 1)[0].replace(".", "")
+[?2004l[?2004h>         email = f"{local}@gmail.com"
+[?2004l[?2004h> 
+[?2004l[?2004h>     words = row["full_name"].split()
+[?2004l[?2004h>     first_name = " ".join(words[:-1]) if len(words) > 1 else " ".join(words)
+[?2004l[?2004h>     last_name = words[-1] if len(words) > 1 else ""
+[?2004l[?2004h> 
+[?2004l[?2004h>     code = {"IN": "91", "US": "1", "GB": "44"}.get(row["country"])
+[?2004l[?2004h>     digits = "".join(c for c in (row["phone"] or "") if c in "0123456789")
+[?2004l[?2004h>     if code and digits.startswith(code) and len(digits) == len(code) + 10:
+[?2004l[?2004h>         national = digits[len(code):]
+[?2004l[?2004h>     elif len(digits) == 11 and digits.startswith("0"):
+[?2004l[?2004h>         national = digits[1:]
+[?2004l[?2004h>     else:
+[?2004l[?2004h>         national = digits
+[?2004l[?2004h>     phone_e164 = f"+{code}{national}" if code and len(national) == 10 else None
+[?2004l[?2004h> 
+[?2004l[?2004h>     return {
+[?2004l[?2004h>         "email_normalized": email,
+[?2004l[?2004h>         "first_name": first_name,
+[?2004l[?2004h>         "last_name": last_name,
+[?2004l[?2004h>         "phone_e164": phone_e164,
+[?2004l[?2004h>     }''')
+[?2004l[?2004h> p.write_text(s)
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@505e47113349:/app# mkdir -p tests
+[?2004l[?2004hroot@505e47113349:/app# cat > tests/test_backfill.py <<'PY'
+[?2004l[?2004h> import unittest
+[?2004l[?2004h> 
+[?2004l[?2004h> from backfill import transform_user
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> class TransformUserTests(unittest.TestCase):
+[?2004l[?2004h>     def transform(self, **overrides):
+[?2004l[?2004h>         row = dict(email='user@example.org', full_name='', phone=None, country='IN')
+[?2004l[?2004h>         row.update(overrides)
+[?2004l[?2004h>         original = row.copy()
+[?2004l[?2004h>         result = transform_user(row)
+[?2004l[?2004h>         self.assertEqual(row, original)
+[?2004l[?2004h>         self.assertEqual(set(result), {'email_normalized', 'first_name', 'last_name', 'phone_e164'})
+[?2004l[?2004h>         return result
+[?2004l[?2004h> 
+[?2004l[?2004h>     def test_email(self):
+[?2004l[?2004h>         for source, expected in [
+[?2004l[?2004h>             (' A.Sharma+news@GoogleMail.com  ', 'asharma@gmail.com'),
+[?2004l[?2004h>             (' A.Sharma+news@Gmail.com ', 'asharma@gmail.com'),
+[?2004l[?2004h>             (' A.Sharma+news@Example.org ', 'a.sharma+news@example.org'),
+[?2004l[?2004h>             ('Zoë.MÜLLER@EXAMPLE.ORG', 'zoë.müller@example.org'),
+[?2004l[?2004h>         ]:
+[?2004l[?2004h>             with self.subTest(source=source):
+[?2004l[?2004h>                 self.assertEqual(self.transform(email=source)['email_normalized'], expected)
+[?2004l[?2004h> 
+[?2004l[?2004h>     def test_names(self):
+[?2004l[?2004h>         for source, expected in [
+[?2004l[?2004h>             ('', ('', '')), (' \t\n ', ('', '')), (' Zoë ', ('Zoë', '')),
+[?2004l[?2004h>             (' Asha\tM.  Sharma\n', ('Asha M.', 'Sharma')),
+[?2004l[?2004h>             ('Oliver van der Berg', ('Oliver van der', 'Berg')),
+[?2004l[?2004h>         ]:
+[?2004l[?2004h>             with self.subTest(source=source):
+[?2004l[?2004h>                 result = self.transform(full_name=source)
+[?2004l[?2004h>                 self.assertEqual((result['first_name'], result['last_name']), expected)
+[?2004l[?2004h> 
+[?2004l[?2004h>     def test_phone_formats(self):
+[?2004l[?2004h>         national = '9876543210'
+[?2004l[?2004h>         for country, code in [('IN', '91'), ('US', '1'), ('GB', '44')]:
+[?2004l[?2004h>             for source in [national, '0' + national, f'+{code} 98765-43210', code + national]:
+[?2004l[?2004h>                 with self.subTest(country=country, source=source):
+[?2004l[?2004h>                     self.assertEqual(self.transform(country=country, phone=source)['phone_e164'],
+[?2004l[?2004h>                                      '+' + code + national)
+[?2004l[?2004h> 
+[?2004l[?2004h>     def test_phone_missing_or_invalid(self):
+[?2004l[?2004h>         for source in [None, '', ' --- ', '1234567', '00919876543210', '012345678901']:
+[?2004l[?2004h>             with self.subTest(source=source):
+[?2004l[?2004h>                 self.assertIsNone(self.transform(phone=source)['phone_e164'])
+[?2004l[?2004h> 
+[?2004l[?2004h>     def test_phone_prefix_precedence(self):
+[?2004l[?2004h>         self.assertEqual(self.transform(country='US', phone='10123456789')['phone_e164'],
+[?2004l[?2004h>                          '+10123456789')
+[?2004l[?2004h>         self.assertEqual(self.transform(country='IN', phone='9123456789')['phone_e164'],
+[?2004l[?2004h>                          '+919123456789')
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> if __name__ == '__main__':
+[?2004l[?2004h>     unittest.main()
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@505e47113349:/app# python3 -m unittest discover -s tests -v
+[?2004lscripts/run_job.sh users_backfill
+test_email (test_backfill.TransformUserTests.test_email) ... ok
+test_names (test_backfill.TransformUserTests.test_names) ... ok
+test_phone_formats (test_backfill.TransformUserTests.test_phone_formats) ... ok
+test_phone_missing_or_invalid (test_backfill.TransformUserTests.test_phone_missing_or_invalid) ... ok
+test_phone_prefix_precedence (test_backfill.TransformUserTests.test_phone_prefix_precedence) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK
+[?2004hroot@505e47113349:/app# scripts/run_job.sh users_backfill
+[?2004l[run_job] users_backfill: starting run users_backfill-20261122T153411Z-171 (max_runtime=45s)
+users: 10000/150000 rows (1.5s)
+users: 20000/150000 rows (3.6s)
+users: 30000/150000 rows (7.4s)
+users: 40000/150000 rows (14.3s)
+users: 50000/150000 rows (23.0s)
+users: 60000/150000 rows (31.6s)
+users: 70000/150000 rows (40.2s)
+[run_job] users_backfill: exceeded max_runtime (45s), killed after 45s
+[?2004hroot@505e47113349:/app# python3 - <<'PY'
+[?2004l[?2004h> import db
+[?2004l[?2004h> c = db.connect()
+[?2004l[?2004h> print('Indexes:', [dict(r) for r in c.execute('PRAGMA index_list(users)')])
+[?2004l[?2004h> print('Batch query plan:', [tuple(r) for r in c.execute('EXPLAIN QUERY PLAN SELECT id, email, full_name, phone, country FROM users ORDER BY created_at, id LIMIT 500 OFFSET 100000')])
+[?2004l[?2004h> print('Runs:', [dict(r) for r in c.execute('SELECT * FROM backfill_runs')])
+[?2004l[?2004h> PY
+[?2004lIndexes: [{'seq': 0, 'name': 'idx_users_status', 'unique': 0, 'origin': 'c', 'partial': 0}]
+Batch query plan: [(7, 0, 0, 'SCAN users'), (23, 0, 0, 'USE TEMP B-TREE FOR ORDER BY')]
+Runs: [{'run_id': 'users_backfill-20261122T153411Z-171', 'job': 'users', 'started_at': '2026-11-22T15:34:11+00:00', 'finished_at': None, 'rows_done': 75000, 'status': 'running'}]
+[?2004hroot@505e47113349:/app# python3 - <<'PY'
+[?2004l[?2004h> import db
+[?2004l[?2004h> c = db.connect()
+[?2004l[?2004h> with c:
+[?2004l[?2004h>     c.execute('CREATE INDEX IF NOT EXISTS idx_users_created_at_id ON users(created_at, id)')
+[?2004l[?2004h> print('Batch query plan:', [tuple(r) for r in c.execute('EXPLAIN QUERY PLAN SELECT id, email, full_name, phone, country FROM users ORDER BY created_at, id LIMIT 500 OFFSET 100000')])
+[?2004l[?2004h> c.close()
+[?2004l[?2004h> PY
+[?2004lBatch query plan: [(8, 0, 0, 'SCAN users USING INDEX idx_users_created_at_id')]
+[?2004hroot@505e47113349:/app# scripts/run_job.sh users_backfill
+[?2004l[run_job] users_backfill: starting run users_backfill-20261122T153507Z-262 (max_runtime=45s)
+users: 10000/150000 rows (0.3s)
+users: 20000/150000 rows (0.6s)
+users: 30000/150000 rows (0.9s)
+users: 40000/150000 rows (1.1s)
+users: 50000/150000 rows (1.4s)
+users: 60000/150000 rows (1.7s)
+users: 70000/150000 rows (1.9s)
+users: 80000/150000 rows (2.4s)
+users: 90000/150000 rows (2.8s)
+users: 100000/150000 rows (3.3s)
+users: 110000/150000 rows (3.9s)
+users: 120000/150000 rows (4.6s)
+users: 130000/150000 rows (5.2s)
+users: 140000/150000 rows (5.9s)
+users: 150000/150000 rows (6.6s)
+users: backfill complete, 150000 rows (run users_backfill-20261122T153507Z-262)
+[run_job] users_backfill: ok in 7s
+[?2004hroot@505e47113349:/app# scripts/run_job.sh checks
+[?2004l[run_job] checks: starting run checks-20261122T153517Z-297 (max_runtime=60s)
+checks passed
+[run_job] checks: ok in 1s
+[?2004hroot@505e47113349:/app# 

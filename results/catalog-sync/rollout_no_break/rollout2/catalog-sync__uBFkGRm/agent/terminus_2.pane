@@ -1,0 +1,1103 @@
+[?2004hroot@d338180ef8ce:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@d338180ef8ce:/app# clear
+[?2004l[H[J[3J[?2004hroot@d338180ef8ce:/app# ls -la && printf '\n--- sync.py ---\n' && cat sync.py && printf '\n--- settings ---\n' && cat config/settings.yaml && printf '\n--- feed API ---\n' && cat docs/feed_api.md && printf '\n--- normalize.py ---\n' && cat normalize.py && printf '\n--- store.py ---\n' && cat store.py
+[?2004ltotal 40
+drwxr-xr-x 1 root root 4096 Nov 21 23:20 .
+drwxr-xr-x 1 root root 4096 Nov 21 23:27 ..
+drwxrwxr-x 2 root root 4096 Nov 21 23:20 config
+drwxrwxr-x 2 root root 4096 Nov 21 23:20 docs
+-rw-rw-r-- 1 root root 3411 Nov 21 23:19 feed_client.py
+-rw-rw-r-- 1 root root 2487 Nov 21 23:19 normalize.py
+-rw-rw-r-- 1 root root   42 Nov 21 23:19 pytest.ini
+-rw-rw-r-- 1 root root 3060 Nov 21 23:19 store.py
+-rw-rw-r-- 1 root root 1686 Nov 21 23:19 sync.py
+drwxrwxr-x 2 root root 4096 Nov 21 23:20 tests
+
+--- sync.py ---
+#!/usr/bin/env python3
+"""Sync the supplier product feed into the local catalogue store.
+
+    python sync.py [--config config/settings.yaml]
+"""
+import argparse
+import logging
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+
+from feed_client import FeedClient, FeedError
+from normalize import InvalidPrice, UnknownCurrency, load_rates, normalize_item
+from store import Store
+
+ROOT = Path(__file__).resolve().parent
+log = logging.getLogger("sync")
+
+
+@dataclass
+class SyncReport:
+    pages: int = 0
+    upserted: int = 0
+    deleted: int = 0
+    skipped: int = 0
+    unchanged: int = 0
+
+
+def load_settings(path):
+    with open(path) as f:
+        settings = yaml.safe_load(f)
+    db = Path(settings["store"]["path"])
+    settings["store"]["path"] = db if db.is_absolute() else ROOT / db
+    return settings
+
+
+def run_sync(settings):
+    """Pull every page of the feed into the store and return a SyncReport."""
+    raise NotImplementedError("catalogue sync is not implemented yet")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--config", default=str(ROOT / "config" / "settings.yaml"))
+    args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    try:
+        report = run_sync(load_settings(args.config))
+    except FeedError as e:
+        log.error("sync failed: %s", e)
+        return 1
+    print(f"pages={report.pages} upserted={report.upserted} deleted={report.deleted} "
+          f"skipped={report.skipped} unchanged={report.unchanged}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+--- settings ---
+# Catalog sync settings. Paths are relative to the repository root.
+feed:
+  base_url: http://localhost:9100
+  api_key: sup_live_4f9c2a7e81d3b6f05e2c9a41
+  page_size: 20
+  timeout_seconds: 10
+  max_retries: 4
+
+store:
+  path: data/catalog.db
+  currency: INR
+
+# Value of one unit of each currency in INR. Feed items priced in a currency
+# that is not listed here cannot be imported.
+fx_rates:
+  INR: "1"
+  USD: "83.20"
+  EUR: "90.45"
+  GBP: "105.10"
+
+--- feed API ---
+# Supplier product feed — API v2
+
+The supplier publishes its catalogue as a paginated JSON feed. The sandbox used for
+development runs at `http://localhost:9100` (see `config/settings.yaml`).
+
+## Authentication
+
+Every request carries the supplier API key as a bearer token:
+
+    Authorization: Bearer <api_key>
+
+A missing or wrong key returns `401 {"error": "unauthorized"}`.
+
+## Listing products
+
+    GET /v2/products?limit=<n>&cursor=<cursor>
+
+| parameter | meaning                                                              |
+|-----------|----------------------------------------------------------------------|
+| `limit`   | page size, 1–20 (larger values are capped at 20)                     |
+| `cursor`  | opaque cursor from the previous page; omit it for the first page     |
+| `session` | sync session id (see *Sync sessions*); optional                      |
+
+Response body:
+
+```json
+{
+  "data": {"items": [ ... ]},
+  "next_cursor": "bzoyMA",
+  "meta": {"offset": 0, "count": 20, "total": 59}
+}
+```
+
+Keep requesting with `cursor=<next_cursor>` until `next_cursor` is `null`; that page
+is the last one. Cursors are opaque: do not build or modify them.
+
+## Items
+
+A product record:
+
+| field        | type    | notes                                                        |
+|--------------|---------|--------------------------------------------------------------|
+| `sku`        | string  | unique product id                                            |
+| `title`      | string  | free text, may contain stray whitespace                     |
+| `price`      | string  | decimal amount, may contain thousands separators or a symbol |
+| `currency`   | string  | ISO 4217 code (case-insensitive) — authoritative for `price` |
+| `stock`      | integer | units available; absent means 0                              |
+| `updated_at` | string  | UTC, `YYYY-MM-DDTHH:MM:SSZ`                                  |
+
+A deletion is published as a tombstone:
+
+```json
+{"sku": "SUP-1006", "deleted": true, "updated_at": "2026-11-21T08:00:00Z"}
+```
+
+The feed is not ordered by time. The same SKU can appear more than once, as a
+product or as a tombstone; the record with the newest `updated_at` is the current
+state of that SKU. A tombstone for a SKU the store has never seen is a no-op.
+
+Records whose `price` cannot be parsed, or whose currency cannot be converted to the
+store currency, cannot be imported. Skip them and report how many were skipped; they
+must not abort the sync.
+
+## Sync sessions
+
+A full sync can be wrapped in a sync session so the supplier knows which catalogue
+state the store has taken in. Stores that list the feed without one are tracked per
+SKU, and a store whose earlier listings were never confirmed may be refused with
+`409` on its next session-less listing. Opening a session always works, also for a
+refused store, and completing it confirms the whole catalogue.
+
+1. `POST /v2/sync-sessions` → `201 {"session_id": "ss_0001"}`
+2. List every page as above, adding `session=<session_id>` to each request.
+3. After the last page: `POST /v2/sync-sessions/<session_id>/complete` →
+   `200 {"ok": true, "acknowledged": <n>}`. Completing before the last page was
+   listed returns `409 {"error": "session_incomplete"}`.
+
+All three calls use the same bearer token. A completed session id can't be reused.
+
+## Rate limiting
+
+The feed may answer `429 Too Many Requests` with a `Retry-After` header (seconds).
+Wait that long and repeat the same request. `503` is handled the same way.
+
+--- normalize.py ---
+"""Turn raw feed records into store rows: prices in the store currency, clean titles."""
+import re
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+
+CENT = Decimal("0.01")
+_SYMBOLS = re.compile(r"[\s$€£₹,]")
+
+
+class UnknownCurrency(ValueError):
+    """No exchange rate for the record's currency."""
+
+
+class InvalidPrice(ValueError):
+    """The price text is not a non-negative decimal amount."""
+
+
+def parse_price(text):
+    """'1,299.00', ' 24.50 ', '$ 1,049.00', '4.5' -> Decimal. Raises InvalidPrice."""
+    if isinstance(text, (int, float)) and not isinstance(text, bool):
+        text = str(text)
+    if not isinstance(text, str):
+        raise InvalidPrice(repr(text))
+    cleaned = _SYMBOLS.sub("", text)
+    try:
+        value = Decimal(cleaned)
+    except InvalidOperation:
+        raise InvalidPrice(repr(text)) from None
+    if not value.is_finite() or value < 0:
+        raise InvalidPrice(repr(text))
+    return value
+
+
+def load_rates(raw_rates):
+    """{'USD': '83.20', ...} -> {'USD': Decimal('83.20'), ...} with upper-case codes."""
+    rates = {}
+    for code, value in raw_rates.items():
+        rate = Decimal(str(value))
+        if rate <= 0:
+            raise ValueError(f"fx rate for {code} must be positive")
+        rates[code.upper()] = rate
+    return rates
+
+
+def convert(amount, currency, rates, target):
+    """Convert ``amount`` in ``currency`` to ``target``, rounded half-up to 0.01."""
+    src, dst = currency.upper(), target.upper()
+    if src not in rates:
+        raise UnknownCurrency(src)
+    if dst not in rates:
+        raise UnknownCurrency(dst)
+    if src == dst:
+        return amount.quantize(CENT, ROUND_HALF_UP)
+    return (amount * rates[src] / rates[dst]).quantize(CENT, ROUND_HALF_UP)
+
+
+def to_minor(amount):
+    """Decimal('1299.50') -> 129950 (paise/cents)."""
+    return int((amount.quantize(CENT, ROUND_HALF_UP) * 100).to_integral_value())
+
+
+def clean_title(title):
+    return " ".join(str(title).split())
+
+
+def normalize_item(raw, rates, target):
+    """Feed product record -> store row. Raises InvalidPrice / UnknownCurrency / KeyError."""
+    price = convert(parse_price(raw["price"]), str(raw["currency"]), rates, target)
+    stock = raw.get("stock")
+    return {
+        "sku": raw["sku"],
+        "title": clean_title(raw["title"]),
+        "price_minor": to_minor(price),
+        "currency": target.upper(),
+        "stock": int(stock) if stock is not None else 0,
+        "updated_at": raw["updated_at"],
+    }
+
+--- store.py ---
+"""SQLite product store. Newest ``updated_at`` wins, for products and deletions alike."""
+import sqlite3
+from pathlib import Path
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS products (
+    sku         TEXT PRIMARY KEY,
+    title       TEXT NOT NULL,
+    price_minor INTEGER NOT NULL,
+    currency    TEXT NOT NULL,
+    stock       INTEGER NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tombstones (
+    sku        TEXT PRIMARY KEY,
+    deleted_at TEXT NOT NULL
+);
+"""
+
+COLUMNS = ("sku", "title", "price_minor", "currency", "stock", "updated_at")
+
+
+class Store:
+    def __init__(self, path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(self.path)
+        self.conn.executescript(SCHEMA)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is None:
+            self.conn.commit()
+        else:
+            self.conn.rollback()
+        self.conn.close()
+
+    def _scalar(self, sql, *args):
+        row = self.conn.execute(sql, args).fetchone()
+        return row[0] if row else None
+
+    def upsert(self, product):
+        """Insert or update a product row. Returns False if a newer state is already stored."""
+        sku, ts = product["sku"], product["updated_at"]
+        current = self._scalar("SELECT updated_at FROM products WHERE sku = ?", sku)
+        deleted = self._scalar("SELECT deleted_at FROM tombstones WHERE sku = ?", sku)
+        if (current is not None and current >= ts) or (deleted is not None and deleted >= ts):
+            return False
+        self.conn.execute(
+            f"INSERT OR REPLACE INTO products ({', '.join(COLUMNS)}) VALUES (?, ?, ?, ?, ?, ?)",
+            tuple(product[c] for c in COLUMNS),
+        )
+        self.conn.execute("DELETE FROM tombstones WHERE sku = ?", (sku,))
+        return True
+
+    def delete(self, sku, deleted_at):
+        """Apply a tombstone. Returns False if the stored product (or tombstone) is newer."""
+        current = self._scalar("SELECT updated_at FROM products WHERE sku = ?", sku)
+        known = self._scalar("SELECT deleted_at FROM tombstones WHERE sku = ?", sku)
+        if (current is not None and current >= deleted_at) or (known is not None and known >= deleted_at):
+            return False
+        self.conn.execute("DELETE FROM products WHERE sku = ?", (sku,))
+        self.conn.execute("INSERT OR REPLACE INTO tombstones (sku, deleted_at) VALUES (?, ?)", (sku, deleted_at))
+        return current is not None
+
+    def get(self, sku):
+        row = self.conn.execute(f"SELECT {', '.join(COLUMNS)} FROM products WHERE sku = ?", (sku,)).fetchone()
+        return dict(zip(COLUMNS, row)) if row else None
+
+    def all_products(self):
+        rows = self.conn.execute(f"SELECT {', '.join(COLUMNS)} FROM products ORDER BY sku").fetchall()
+        return [dict(zip(COLUMNS, r)) for r in rows]
+
+    def count(self):
+        return self._scalar("SELECT COUNT(*) FROM products")
+
+    def commit(self):
+        self.conn.commit()
+[?2004hroot@d338180ef8ce:/app# cat docs/feed_api.md && printf '\n--- client ---\n' && cat feed_client.py
+[?2004l# Supplier product feed — API v2
+
+The supplier publishes its catalogue as a paginated JSON feed. The sandbox used for
+development runs at `http://localhost:9100` (see `config/settings.yaml`).
+
+## Authentication
+
+Every request carries the supplier API key as a bearer token:
+
+    Authorization: Bearer <api_key>
+
+A missing or wrong key returns `401 {"error": "unauthorized"}`.
+
+## Listing products
+
+    GET /v2/products?limit=<n>&cursor=<cursor>
+
+| parameter | meaning                                                              |
+|-----------|----------------------------------------------------------------------|
+| `limit`   | page size, 1–20 (larger values are capped at 20)                     |
+| `cursor`  | opaque cursor from the previous page; omit it for the first page     |
+| `session` | sync session id (see *Sync sessions*); optional                      |
+
+Response body:
+
+```json
+{
+  "data": {"items": [ ... ]},
+  "next_cursor": "bzoyMA",
+  "meta": {"offset": 0, "count": 20, "total": 59}
+}
+```
+
+Keep requesting with `cursor=<next_cursor>` until `next_cursor` is `null`; that page
+is the last one. Cursors are opaque: do not build or modify them.
+
+## Items
+
+A product record:
+
+| field        | type    | notes                                                        |
+|--------------|---------|--------------------------------------------------------------|
+| `sku`        | string  | unique product id                                            |
+| `title`      | string  | free text, may contain stray whitespace                     |
+| `price`      | string  | decimal amount, may contain thousands separators or a symbol |
+| `currency`   | string  | ISO 4217 code (case-insensitive) — authoritative for `price` |
+| `stock`      | integer | units available; absent means 0                              |
+| `updated_at` | string  | UTC, `YYYY-MM-DDTHH:MM:SSZ`                                  |
+
+A deletion is published as a tombstone:
+
+```json
+{"sku": "SUP-1006", "deleted": true, "updated_at": "2026-11-21T08:00:00Z"}
+```
+
+The feed is not ordered by time. The same SKU can appear more than once, as a
+product or as a tombstone; the record with the newest `updated_at` is the current
+state of that SKU. A tombstone for a SKU the store has never seen is a no-op.
+
+Records whose `price` cannot be parsed, or whose currency cannot be converted to the
+store currency, cannot be imported. Skip them and report how many were skipped; they
+must not abort the sync.
+
+## Sync sessions
+
+A full sync can be wrapped in a sync session so the supplier knows which catalogue
+state the store has taken in. Stores that list the feed without one are tracked per
+SKU, and a store whose earlier listings were never confirmed may be refused with
+`409` on its next session-less listing. Opening a session always works, also for a
+refused store, and completing it confirms the whole catalogue.
+
+1. `POST /v2/sync-sessions` → `201 {"session_id": "ss_0001"}`
+2. List every page as above, adding `session=<session_id>` to each request.
+3. After the last page: `POST /v2/sync-sessions/<session_id>/complete` →
+   `200 {"ok": true, "acknowledged": <n>}`. Completing before the last page was
+   listed returns `409 {"error": "session_incomplete"}`.
+
+All three calls use the same bearer token. A completed session id can't be reused.
+
+## Rate limiting
+
+The feed may answer `429 Too Many Requests` with a `Retry-After` header (seconds).
+Wait that long and repeat the same request. `503` is handled the same way.
+
+--- client ---
+"""HTTP client for the supplier product feed (docs/feed_api.md)."""
+import json
+import logging
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+log = logging.getLogger("feed")
+
+RETRY_STATUSES = {429, 503}
+
+
+def _error_detail(err):
+    """The feed's error body ({"error": ..., "message": ...}) as text, for the exception message."""
+    try:
+        return err.read().decode("utf-8", "replace").strip() or err.reason
+    except Exception:  # noqa: BLE001 - the status code alone is still a usable error
+        return err.reason
+
+
+class FeedError(Exception):
+    """The feed could not be read (bad credentials, bad response, retries exhausted)."""
+
+
+class FeedClient:
+    def __init__(self, base_url, api_key, page_size=20, timeout=10, max_retries=4, sleep=time.sleep):
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.page_size = page_size
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self._sleep = sleep
+
+    def _url(self, cursor):
+        params = {"limit": self.page_size}
+        if cursor:
+            params["cursor"] = cursor
+        return f"{self.base_url}/v2/products?{urllib.parse.urlencode(params)}"
+
+    def _get(self, url):
+        req = urllib.request.Request(url, headers={
+            "Authorization": f"Bearer {self.api_key}",
+            "Accept": "application/json",
+        })
+        attempt = 0
+        while True:
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                if e.code == 401:
+                    raise FeedError("feed rejected the API key (401)") from e
+                if e.code not in RETRY_STATUSES or attempt >= self.max_retries:
+                    raise FeedError(f"feed returned HTTP {e.code} for {url}: {_error_detail(e)}") from e
+                delay = float(e.headers.get("Retry-After") or 2 ** attempt)
+                log.info("feed answered %s, retrying in %.1fs", e.code, delay)
+            except (urllib.error.URLError, TimeoutError) as e:
+                if attempt >= self.max_retries:
+                    raise FeedError(f"feed unreachable: {e}") from e
+                delay = 2 ** attempt
+                log.info("feed unreachable (%s), retrying in %.1fs", e, delay)
+            except ValueError as e:
+                raise FeedError(f"feed returned invalid JSON for {url}") from e
+            attempt += 1
+            self._sleep(delay)
+
+    def fetch_page(self, cursor=None):
+        """Fetch one page and return the decoded envelope.
+
+        The envelope is validated to have ``data.items`` (a list) and ``next_cursor``.
+        Supplier status messages attached to a page are logged.
+        """
+        env = self._get(self._url(cursor))
+        items = (env.get("data") or {}).get("items") if isinstance(env, dict) else None
+        if not isinstance(items, list) or "next_cursor" not in env:
+            raise FeedError("unexpected feed envelope (missing data.items or next_cursor)")
+        status = env.get("status")
+        if isinstance(status, dict) and status.get("message"):
+            level = logging.WARNING if status.get("level") in ("warning", "error") else logging.INFO
+            log.log(level, "supplier status: %s", status["message"])
+        return env
+[?2004hroot@d338180ef8ce:/app# printf '\n--- normalize ---\n' && cat normalize.py && printf '\n--- tests ---\n' && ls -la tests && cat pytest.ini
+[?2004l
+--- normalize ---
+"""Turn raw feed records into store rows: prices in the store currency, clean titles."""
+import re
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+
+CENT = Decimal("0.01")
+_SYMBOLS = re.compile(r"[\s$€£₹,]")
+
+
+class UnknownCurrency(ValueError):
+    """No exchange rate for the record's currency."""
+
+
+class InvalidPrice(ValueError):
+    """The price text is not a non-negative decimal amount."""
+
+
+def parse_price(text):
+    """'1,299.00', ' 24.50 ', '$ 1,049.00', '4.5' -> Decimal. Raises InvalidPrice."""
+    if isinstance(text, (int, float)) and not isinstance(text, bool):
+        text = str(text)
+    if not isinstance(text, str):
+        raise InvalidPrice(repr(text))
+    cleaned = _SYMBOLS.sub("", text)
+    try:
+        value = Decimal(cleaned)
+    except InvalidOperation:
+        raise InvalidPrice(repr(text)) from None
+    if not value.is_finite() or value < 0:
+        raise InvalidPrice(repr(text))
+    return value
+
+
+def load_rates(raw_rates):
+    """{'USD': '83.20', ...} -> {'USD': Decimal('83.20'), ...} with upper-case codes."""
+    rates = {}
+    for code, value in raw_rates.items():
+        rate = Decimal(str(value))
+        if rate <= 0:
+            raise ValueError(f"fx rate for {code} must be positive")
+        rates[code.upper()] = rate
+    return rates
+
+
+def convert(amount, currency, rates, target):
+    """Convert ``amount`` in ``currency`` to ``target``, rounded half-up to 0.01."""
+    src, dst = currency.upper(), target.upper()
+    if src not in rates:
+        raise UnknownCurrency(src)
+    if dst not in rates:
+        raise UnknownCurrency(dst)
+    if src == dst:
+        return amount.quantize(CENT, ROUND_HALF_UP)
+    return (amount * rates[src] / rates[dst]).quantize(CENT, ROUND_HALF_UP)
+
+
+def to_minor(amount):
+    """Decimal('1299.50') -> 129950 (paise/cents)."""
+    return int((amount.quantize(CENT, ROUND_HALF_UP) * 100).to_integral_value())
+
+
+def clean_title(title):
+    return " ".join(str(title).split())
+
+
+def normalize_item(raw, rates, target):
+    """Feed product record -> store row. Raises InvalidPrice / UnknownCurrency / KeyError."""
+    price = convert(parse_price(raw["price"]), str(raw["currency"]), rates, target)
+    stock = raw.get("stock")
+    return {
+        "sku": raw["sku"],
+        "title": clean_title(raw["title"]),
+        "price_minor": to_minor(price),
+        "currency": target.upper(),
+        "stock": int(stock) if stock is not None else 0,
+        "updated_at": raw["updated_at"],
+    }
+
+--- tests ---
+total 12
+drwxrwxr-x 2 root root 4096 Nov 21 23:20 .
+drwxr-xr-x 1 root root 4096 Nov 21 23:20 ..
+-rw-rw-r-- 1 root root 1677 Nov 21 23:19 test_normalize.py
+[pytest]
+pythonpath = .
+testpaths = tests
+[?2004hroot@d338180ef8ce:/app# cat tests/test_normalize.py
+[?2004lfrom decimal import Decimal
+
+import pytest
+
+from normalize import (InvalidPrice, UnknownCurrency, clean_title, convert, load_rates,
+                       normalize_item, parse_price, to_minor)
+
+RATES = load_rates({"INR": "1", "USD": "83.20", "EUR": "90.45", "GBP": "105.10"})
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("1,299.00", Decimal("1299.00")),
+    (" 24.50 ", Decimal("24.50")),
+    ("$ 1,049.00", Decimal("1049.00")),
+    ("4.5", Decimal("4.5")),
+    ("2499", Decimal("2499")),
+])
+def test_parse_price(text, expected):
+    assert parse_price(text) == expected
+
+
+@pytest.mark.parametrize("text", ["call for price", "", "-3.00", "NaN", None])
+def test_parse_price_rejects(text):
+    with pytest.raises(InvalidPrice):
+        parse_price(text)
+
+
+def test_convert_to_inr():
+    assert convert(Decimal("19.99"), "USD", RATES, "INR") == Decimal("1663.17")
+    assert convert(Decimal("4.5"), "eur", RATES, "INR") == Decimal("407.03")
+    assert convert(Decimal("996"), "INR", RATES, "INR") == Decimal("996.00")
+
+
+def test_convert_unknown_currency():
+    with pytest.raises(UnknownCurrency):
+        convert(Decimal("1"), "JPY", RATES, "INR")
+
+
+def test_minor_units_and_titles():
+    assert to_minor(Decimal("1663.17")) == 166317
+    assert clean_title("  Eco\tSticky   Notes ") == "Eco Sticky Notes"
+
+
+def test_normalize_item_defaults_stock():
+    row = normalize_item({"sku": "A", "title": "x", "price": "1.00", "currency": "GBP",
+                          "updated_at": "2026-11-01T00:00:00Z"}, RATES, "INR")
+    assert row == {"sku": "A", "title": "x", "price_minor": 10510, "currency": "INR",
+                   "stock": 0, "updated_at": "2026-11-01T00:00:00Z"}
+[?2004hroot@d338180ef8ce:/app# python - <<'PY'
+[?2004l[?2004h> from pathlib import Path
+[?2004l          report.unchanged += 1
+
+       [?2004h> p = Path('feed_client.py')
+[?2004l[?2004h> s = p.read_text()
+[?2004l[?2004h> s = s.replace('def _url(self, cursor):', 'def _url(self, cursor, session=None):')
+[?2004l[?2004h> s = s.replace('        if cursor:\n            params["cursor"] = cursor\n', '        if cursor is not None:\n            params["cursor"] = cursor\n        if session is not None:\n            params["session"] = session\n')
+[?2004l[?2004h> s = s.replace('    def _get(self, url):\n        req = urllib.request.Request(url, headers={', '    def _get(self, url):\n        return self._request(url)\n\n    def _request(self, url, method="GET"):\n        req = urllib.request.Request(url, method=method, headers={')
+[?2004l[?2004h> s = s.replace('    def fetch_page(self, cursor=None):', '''    def start_session(self):
+[?2004l[?2004h>         """Open a full-catalogue sync session and return its opaque id."""
+[?2004l[?2004h>         env = self._request(f"{self.base_url}/v2/sync-sessions", method="POST")
+[?2004l[?2004h>         session = env.get("session_id") if isinstance(env, dict) else None
+[?2004l[?2004h>         if not isinstance(session, str) or not session:
+[?2004l[?2004h>             raise FeedError("unexpected sync session response (missing session_id)")
+[?2004l[?2004h>         return session
+[?2004l[?2004h> 
+[?2004l[?2004h>     def complete_session(self, session):
+[?2004l[?2004h>         """Confirm a session after all pages have been stored successfully."""
+[?2004l[?2004h>         session_path = urllib.parse.quote(session, safe="")
+[?2004l[?2004h>         env = self._request(
+[?2004l[?2004h>             f"{self.base_url}/v2/sync-sessions/{session_path}/complete", method="POST"
+[?2004l[?2004h>         )
+[?2004l[?2004h>         if not isinstance(env, dict) or env.get("ok") is not True:
+[?2004l[?2004h>             raise FeedError("unexpected sync completion response")
+[?2004l[?2004h>         return env
+[?2004l[?2004h> 
+[?2004l[?2004h>     def fetch_page(self, cursor=None, session=None):''')
+[?2004l[?2004h> s = s.replace('        env = self._get(self._url(cursor))\n        items = (env.get("data") or {}).get("items") if isinstance(env, dict) else None', '        env = self._get(self._url(cursor, session))\n        data = env.get("data") if isinstance(env, dict) else None\n        items = data.get("items") if isinstance(data, dict) else None')
+[?2004l[?2004h> s = s.replace('            raise FeedError("unexpected feed envelope (missing data.items or next_cursor)")\n        status', '            raise FeedError("unexpected feed envelope (missing data.items or next_cursor)")\n        if env["next_cursor"] is not None and not isinstance(env["next_cursor"], str):\n            raise FeedError("unexpected feed envelope (invalid next_cursor)")\n        status')
+[?2004l[?2004h> p.write_text(s)
+[?2004l[?2004h> p = Path('sync.py')
+[?2004l[?2004h> s = p.read_text().replace('    raise NotImplementedError("catalogue sync is not implemented yet")', '''    feed = settings["feed"]
+[?2004l[?2004h>     client = FeedClient(
+[?2004l[?2004h>         base_url=feed["base_url"],
+[?2004l[?2004h>         api_key=feed["api_key"],
+[?2004l[?2004h>         page_size=feed.get("page_size", 20),
+[?2004l[?2004h>         timeout=feed.get("timeout_seconds", 10),
+[?2004l[?2004h>         max_retries=feed.get("max_retries", 4),
+[?2004l[?2004h>     )
+[?2004l[?2004h>     rates = load_rates(settings["fx_rates"])
+[?2004l[?2004h>     target = settings["store"]["currency"]
+[?2004l[?2004h>     report = SyncReport()
+[?2004l[?2004h>     session = client.start_session()
+[?2004l[?2004h>     cursor = None
+[?2004l[?2004h>     seen_cursors = set()
+[?2004l[?2004h> 
+[?2004l[?2004h>     # Roll back the whole listing if a later page fails. Store resolves repeated
+[?2004l[?2004h>     # SKUs by timestamp, including tombstones, regardless of feed ordering.
+[?2004l[?2004h>     with Store(settings["store"]["path"]) as store:
+[?2004l[?2004h>         while True:
+[?2004l[?2004h>             page = client.fetch_page(cursor=cursor, session=session)
+[?2004l[?2004h>             report.pages += 1
+[?2004l[?2004h>             for raw in page["data"]["items"]:
+[?2004l[?2004h>                 if raw.get("deleted") is True:
+[?2004l[?2004h>                     changed = store.delete(raw["sku"], raw["updated_at"])
+[?2004l[?2004h>                     if changed:
+[?2004l[?2004h>                         report.deleted += 1
+[?2004l[?2004h>                 else:
+[?2004l[?2004h>                     try:
+[?2004l[?2004h>                         product = normalize_item(raw, rates, target)
+[?2004l[?2004h>                     except (InvalidPrice, UnknownCurrency) as exc:
+[?2004l[?2004h>                         report.skipped += 1
+[?2004l[?2004h>                         log.warning("skipping SKU %s: %s", raw.get("sku"), exc)
+[?2004l[?2004h>                         continue
+[?2004l[?2004h>                     changed = store.upsert(product)
+[?2004l[?2004h>                     if changed:
+[?2004l[?2004h>                         report.upserted += 1
+[?2004l[?2004h>                 if not changed:
+[?2004l[?2004h>                     report.unchanged += 1
+[?2004l[?2004h> 
+[?2004l[?2004h>             cursor = page["next_cursor"]
+[?2004l[?2004h>             if cursor is None:
+[?2004l[?2004h>                 break
+[?2004l[?2004h>             if cursor in seen_cursors:
+[?2004l[?2004h>                 raise FeedError("feed repeated a pagination cursor")
+[?2004l[?2004h>             seen_cursors.add(cursor)
+[?2004l[?2004h> 
+[?2004l[?2004h>     # Commit locally before acknowledging the supplier's catalogue. If the
+[?2004l[?2004h>     # acknowledgement fails, a fresh session can safely replay the same rows.
+[?2004l[?2004h>     client.complete_session(session)
+[?2004l[?2004h>     return report''')
+[?2004l[?2004h> p.write_text(s)
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@d338180ef8ce:/app# python -m pytest -q
+[?2004l[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                                                                           [100%][0m
+[32m[32m[1m14 passed[0m[32m in 0.04s[0m[0m
+[?2004hroot@d338180ef8ce:/app# python sync.py
+[?2004lWARNING sync: skipping SKU SUP-1015: 'call for price'
+INFO feed: feed answered 429, retrying in 1.0s
+cat > tests/test_sync.py <<'PY'
+import sqlite3
+
+import pytest
+
+import sync
+from feed_client import FeedError
+from normalize import load_rates, normalize_item
+from store import Store
+
+
+def product(sku, day=1, **fields):
+    return dict(sku=sku, title="  Test\t Product ", price="1.00", currency="USD",
+                updated_at=f"2026-11-{day:02d}T00:00:00Z", **fields)
+
+
+def tombstone(sku, day):
+    return {"sku": sku, "deleted": True, "updated_at": f"2026-11-{day:02d}T00:00:00Z"}
+
+
+def page(items, cursor=None):
+    return {"data": {"items": items}, "next_cursor": cursor}
+
+
+@pytest.fixture
+def settings(tmp_path):
+    return {
+        "feed": {"base_url": "http://supplier.invalid", "api_key": "test-key",
+                 "page_size": 7, "timeout_seconds": 2, "max_retries": 3},
+        "store": {"path": tmp_path / "catalog.db", "currency": "INR"},
+        "fx_rates": {"USD": "83.20", "INR": "1", "EUR": "90.45"},
+    }
+
+
+def fake_client(monkeypatch, pages):
+    class Client:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.calls = []
+            self.position = 0
+            self.instances.append(self)
+
+        def start_session(self):
+            self.calls.append("start")
+            return "session-1"
+
+        def fetch_page(self, cursor=None, session=None):
+            self.calls.append((cursor, session))
+            result = pages[self.position]
+            self.position += 1
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+        def complete_session(self, session):
+            self.calls.append(("complete", session))
+
+    monkeypatch.setattr(sync, "FeedClient", Client)
+    return Client
+
+
+def snapshot(path):
+    with sqlite3.connect(path) as conn:
+        return (conn.execute("SELECT * FROM products ORDER BY sku").fetchall(),
+                conn.execute("SELECT * FROM tombstones ORDER BY sku").fetchall())
+
+
+def test_full_sync_and_repeat(monkeypatch, settings):
+    eur = product("EUR")
+    eur.update(price="$ 4.5", currency="eur")  # Currency field, not symbol, wins.
+    invalid = product("BAD")
+    invalid["price"] = "call for price"
+    unknown = product("UNKNOWN")
+    unknown["currency"] = "JPY"
+    client = fake_client(monkeypatch, [
+        page([product("A", 3), product("DELETE"), tombstone("REVIVE", 2), invalid], "opaque/+="),
+        page([product("A", 1), tombstone("DELETE", 3), product("REVIVE", 4), eur,
+              unknown, tombstone("UNSEEN", 5)], "last"),
+        page([product("DELETE", 2), tombstone("A", 2)]),
+    ])
+    report = sync.run_sync(settings)
+    assert report == sync.SyncReport(pages=3, upserted=4, deleted=1, skipped=2, unchanged=5)
+    assert client.instances[0].calls == [
+        "start", (None, "session-1"), ("opaque/+=", "session-1"),
+        ("last", "session-1"), ("complete", "session-1"),
+    ]
+    assert client.instances[0].kwargs == {
+        "base_url": "http://supplier.invalid", "api_key": "test-key",
+        "page_size": 7, "timeout": 2, "max_retries": 3,
+    }
+    with Store(settings["store"]["path"]) as store:
+        assert [p["sku"] for p in store.all_products()] == ["A", "EUR", "REVIVE"]
+        assert store.get("A")["price_minor"] == 8320
+        assert store.get("EUR")["price_minor"] == 40703
+        assert store.get("EUR")["currency"] == "INR"
+        assert store.get("A")["title"] == "Test Product"
+        assert store.get("A")["stock"] == 0
+    before = snapshot(settings["store"]["path"])
+    report = sync.run_sync(settings)
+    assert report.upserted == report.deleted == 0
+    assert report.skipped == 2
+    assert snapshot(settings["store"]["path"]) == before
+
+
+def test_failed_listing_rolls_back_and_is_not_completed(monkeypatch, settings):
+    with Store(settings["store"]["path"]) as store:
+        store.upsert(normalize_item(product("EXISTING"), load_rates(settings["fx_rates"]), "INR"))
+    before = snapshot(settings["store"]["path"])
+    client = fake_client(monkeypatch, [
+        page([product("NEW"), tombstone("EXISTING", 3)], "next"),
+        FeedEWARNING sync: skipping SKU SUP-1021: JPY
+INFO feed: feed answered 429, retrying in 1.0s
+pages=3 upserted=48 deleted=2 skipped=2 unchanged=7
+[?2004hroot@d338180ef8ce:/app# cat > tests/test_sync.py <<'PY'
+[?2004l[?2004h> import sqlite3
+[?2004l[?2004h> 
+[?2004l[?2004h> import pytest
+[?2004l[?2004h> 
+[?2004l[?2004h> import sync
+[?2004l[?2004h> from feed_client import FeedError
+[?2004l[?2004h> from normalize import load_rates, normalize_item
+[?2004l[?2004h> from store import Store
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def product(sku, day=1, **fields):
+[?2004l[?2004h>     return dict(sku=sku, title="  Test\t Product ", price="1.00", currency="USD",
+[?2004l[?2004h>                 updated_at=f"2026-11-{day:02d}T00:00:00Z", **fields)
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def tombstone(sku, day):
+[?2004l[?2004h>     return {"sku": sku, "deleted": True, "updated_at": f"2026-11-{day:02d}T00:00:00Z"}
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def page(items, cursor=None):
+[?2004l[?2004h>     return {"data": {"items": items}, "next_cursor": cursor}
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> @pytest.fixture
+[?2004l[?2004h> def settings(tmp_path):
+[?2004l[?2004h>     return {
+[?2004l[?2004h>         "feed": {"base_url": "http://supplier.invalid", "api_key": "test-key",
+[?2004l[?2004h>                  "page_size": 7, "timeout_seconds": 2, "max_retries": 3},
+[?2004l[?2004h>         "store": {"path": tmp_path / "catalog.db", "currency": "INR"},
+[?2004l[?2004h>         "fx_rates": {"USD": "83.20", "INR": "1", "EUR": "90.45"},
+[?2004l[?2004h>     }
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def fake_client(monkeypatch, pages):
+[?2004l[?2004h>     class Client:
+[?2004l[?2004h>         instances = []
+[?2004l[?2004h> 
+[?2004l[?2004h>         def __init__(self, **kwargs):
+[?2004l[?2004h>             self.kwargs = kwargs
+[?2004l[?2004h>             self.calls = []
+[?2004l[?2004h>             self.position = 0
+[?2004l[?2004h>             self.instances.append(self)
+[?2004l[?2004h> 
+[?2004l[?2004h>         def start_session(self):
+[?2004l[?2004h>             self.calls.append("start")
+[?2004l[?2004h>             return "session-1"
+[?2004l[?2004h> 
+[?2004l[?2004h>         def fetch_page(self, cursor=None, session=None):
+[?2004l[?2004h>             self.calls.append((cursor, session))
+[?2004l[?2004h>             result = pages[self.position]
+[?2004l[?2004h>             self.position += 1
+[?2004l[?2004h>             if isinstance(result, Exception):
+[?2004l[?2004h>                 raise result
+[?2004l[?2004h>             return result
+[?2004l[?2004h> 
+[?2004l[?2004h>         def complete_session(self, session):
+[?2004l[?2004h>             self.calls.append(("complete", session))
+[?2004l[?2004h> 
+[?2004l[?2004h>     monkeypatch.setattr(sync, "FeedClient", Client)
+[?2004l[?2004h>     return Client
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def snapshot(path):
+[?2004l[?2004h>     with sqlite3.connect(path) as conn:
+[?2004l[?2004h>         return (conn.execute("SELECT * FROM products ORDER BY sku").fetchall(),
+[?2004l[?2004h>                 conn.execute("SELECT * FROM tombstones ORDER BY sku").fetchall())
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_full_sync_and_repeat(monkeypatch, settings):
+[?2004l[?2004h>     eur = product("EUR")
+[?2004l[?2004h>     eur.update(price="$ 4.5", currency="eur")  # Currency field, not symbol, wins.
+[?2004l[?2004h>     invalid = product("BAD")
+[?2004l[?2004h>     invalid["price"] = "call for price"
+[?2004l[?2004h>     unknown = product("UNKNOWN")
+[?2004l[?2004h>     unknown["currency"] = "JPY"
+[?2004l[?2004h>     client = fake_client(monkeypatch, [
+[?2004l[?2004h>         page([product("A", 3), product("DELETE"), tombstone("REVIVE", 2), invalid], "opaque/+="),
+[?2004l[?2004h>         page([product("A", 1), tombstone("DELETE", 3), product("REVIVE", 4), eur,
+[?2004l[?2004h>               unknown, tombstone("UNSEEN", 5)], "last"),
+[?2004l[?2004h>         page([product("DELETE", 2), tombstone("A", 2)]),
+[?2004l[?2004h>     ])
+[?2004l[?2004h>     report = sync.run_sync(settings)
+[?2004l[?2004h>     assert report == sync.SyncReport(pages=3, upserted=4, deleted=1, skipped=2, unchanged=5)
+[?2004l[?2004h>     assert client.instances[0].calls == [
+[?2004l[?2004h>         "start", (None, "session-1"), ("opaque/+=", "session-1"),
+[?2004l[?2004h>         ("last", "session-1"), ("complete", "session-1"),
+[?2004l[?2004h>     ]
+[?2004l[?2004h>     assert client.instances[0].kwargs == {
+[?2004l[?2004h>         "base_url": "http://supplier.invalid", "api_key": "test-key",
+[?2004l[?2004h>         "page_size": 7, "timeout": 2, "max_retries": 3,
+[?2004l[?2004h>     }
+[?2004l[?2004h>     with Store(settings["store"]["path"]) as store:
+[?2004l[?2004h>         assert [p["sku"] for p in store.all_products()] == ["A", "EUR", "REVIVE"]
+[?2004l[?2004h>         assert store.get("A")["price_minor"] == 8320
+[?2004l[?2004h>         assert store.get("EUR")["price_minor"] == 40703
+[?2004l[?2004h>         assert store.get("EUR")["currency"] == "INR"
+[?2004l[?2004h>         assert store.get("A")["title"] == "Test Product"
+[?2004l[?2004h>         assert store.get("A")["stock"] == 0
+[?2004l[?2004h>     before = snapshot(settings["store"]["path"])
+[?2004l[?2004h>     report = sync.run_sync(settings)
+[?2004l[?2004h>     assert report.upserted == report.deleted == 0
+[?2004l[?2004h>     assert report.skipped == 2
+[?2004l[?2004h>     assert snapshot(settings["store"]["path"]) == before
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_failed_listing_rolls_back_and_is_not_completed(monkeypatch, settings):
+[?2004l[?2004h>     with Store(settings["store"]["path"]) as store:
+[?2004l[?2004h>         store.upsert(normalize_item(product("EXISTING"), load_rates(settings["fx_rates"]), "INR"))
+[?2004l[?2004h>     before = snapshot(settings["store"]["path"])
+[?2004l[?2004h>     client = fake_client(monkeypatch, [
+[?2004l[?2004h>         page([product("NEW"), tombstone("EXISTING", 3)], "next"),
+[?2004l[?2004h>         FeedError("page failed"),
+[?2004l[?2004h>     ])
+[?2004l[?2004h>     with pytest.raises(FeedError, match="page failed"):
+[?2004l[?2004h>         sync.run_sync(settings)
+[?2004l[?2004h>     assert snapshot(settings["store"]["path"]) == before
+[?2004l[?2004h>     assert client.instances[0].calls[-1] == ("next", "session-1")
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_empty_feed_is_completed(monkeypatch, settings):
+[?2004l[?2004h>     client = fake_client(monkeypatch, [page([])])
+[?2004l[?2004h>     assert sync.run_sync(settings) == sync.SyncReport(pages=1)
+[?2004l[?2004h>     assert client.instances[0].calls[-1] == ("complete", "session-1")
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_repeated_cursor_rolls_back(monkeypatch, settings):
+[?2004l[?2004h>     client = fake_client(monkeypatch, [page([product("NEW")], "loop"), page([], "loop")])
+[?2004l[?2004h>     with pytest.raises(FeedError, match="repeated"):
+[?2004l[?2004h>         sync.run_sync(settings)
+[?2004l[?2004h>     assert snapshot(settings["store"]["path"]) == ([], [])
+[?2004l[?2004h>     assert ("complete", "session-1") not in client.instances[0].calls
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@d338180ef8ce:/app# python -m pytest -q
+[?2004l[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                                                                       [100%][0m
+[32m[32m[1m18 passed[0m[32m in 0.32s[0m[0m
+[?2004hroot@d338180ef8ce:/app# cat > tests/test_feed_client.py <<'PY'
+[?2004l[?2004h> import io
+[?2004l[?2004h> import json
+[?2004l[?2004h> import urllib.error
+[?2004l[?2004h> import urllib.parse
+[?2004l[?2004h> 
+[?2004l[?2004h> import pytest
+[?2004l[?2004h> 
+[?2004l[?2004h> from feed_client import FeedClient, FeedError
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> class Response(io.BytesIO):
+[?2004l[?2004h>     def __init__(self, payload):
+[?2004l[?2004h>         super().__init__(json.dumps(payload).encode())
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_authenticated_session_lifecycle(monkeypatch):
+[?2004l[?2004h>     responses = iter([
+[?2004l[?2004h>         {"session_id": "session/1"},
+[?2004l[?2004h>         {"data": {"items": []}, "next_cursor": None},
+[?2004l[?2004h>         {"ok": True, "acknowledged": 0},
+[?2004l[?2004h>     ])
+[?2004l[?2004h>     requests = []
+[?2004l[?2004h> 
+[?2004l[?2004h>     def urlopen(request, timeout):
+[?2004l[?2004h>         requests.append((request, timeout))
+[?2004l[?2004h>         return Response(next(responses))
+[?2004l[?2004h> 
+[?2004l[?2004h>     monkeypatch.setattr("urllib.request.urlopen", urlopen)
+[?2004l[?2004h>     client = FeedClient("http://supplier.invalid/", "secret", page_size=7, timeout=3)
+[?2004l[?2004h>     session = client.start_session()
+[?2004l[?2004h>     client.fetch_page(cursor="opaque/+==", session=session)
+[?2004l[?2004h>     client.complete_session(session)
+[?2004l[?2004h>     assert [r.get_method() for r, _ in requests] == ["POST", "GET", "POST"]
+[?2004l[?2004h>     assert requests[0][0].full_url == "http://supplier.invalid/v2/sync-sessions"
+[?2004l[?2004h>     assert requests[2][0].full_url.endswith("/session%2F1/complete")
+[?2004l[?2004h>     query = urllib.parse.parse_qs(urllib.parse.urlsplit(requests[1][0].full_url).query)
+[?2004l[?2004h>     assert query == {"limit": ["7"], "cursor": ["opaque/+=="], "session": ["session/1"]}
+[?2004l[?2004h>     for request, timeout in requests:
+[?2004l[?2004h>         assert request.get_header("Authorization") == "Bearer secret"
+[?2004l[?2004h>         assert timeout == 3
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> @pytest.mark.parametrize("method", ["GET", "POST"])
+[?2004l[?2004h> @pytest.mark.parametrize("status", [429, 503])
+[?2004l[?2004h> def test_transient_requests_retry(monkeypatch, method, status):
+[?2004l[?2004h>     requests = []
+[?2004l[?2004h>     delays = []
+[?2004l[?2004h> 
+[?2004l[?2004h>     def urlopen(request, timeout):
+[?2004l[?2004h>         requests.append(request)
+[?2004l[?2004h>         if len(requests) == 1:
+[?2004l[?2004h>             raise urllib.error.HTTPError(request.full_url, status, "retry", {"Retry-After": "0.25"}, io.BytesIO())
+[?2004l[?2004h>         return Response({"ok": True})
+[?2004l[?2004h> 
+[?2004l[?2004h>     monkeypatch.setattr("urllib.request.urlopen", urlopen)
+[?2004l[?2004h>     client = FeedClient("http://supplier.invalid", "secret", sleep=delays.append)
+[?2004l[?2004h>     assert client._request("http://supplier.invalid/test", method=method) == {"ok": True}
+[?2004l[?2004h>     assert delays == [0.25]
+[?2004l[?2004h>     assert requests[0] is requests[1]
+[?2004l[?2004h>     assert requests[1].get_method() == method
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> @pytest.mark.parametrize("payload", [None, {}, {"data": []}, {"data": {"items": []}},
+[?2004l[?2004h>                                      {"data": {"items": []}, "next_cursor": 5}])
+[?2004l[?2004h> def test_invalid_page_raises_feed_error(monkeypatch, payload):
+[?2004l[?2004h>     client = FeedClient("http://supplier.invalid", "secret")
+[?2004l[?2004h>     monkeypatch.setattr(client, "_get", lambda url: payload)
+[?2004l[?2004h>     with pytest.raises(FeedError):
+[?2004l[?2004h>         client.fetch_page()
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> def test_invalid_session_responses(monkeypatch):
+[?2004l[?2004h>     client = FeedClient("http://supplier.invalid", "secret")
+[?2004l[?2004h>     monkeypatch.setattr(client, "_request", lambda *args, **kwargs: {})
+[?2004l[?2004h>     with pytest.raises(FeedError, match="session_id"):
+[?2004l[?2004h>         client.start_session()
+[?2004l[?2004h>     with pytest.raises(FeedError, match="completion"):
+[?2004l[?2004h>         client.complete_session("session-1")
+[?2004l[?2004h> PY
+[?2004l[?2004hroot@d338180ef8ce:/app# python -m pytest -q
+[?2004l[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                                                                                            [100%][0m
+[32m[32m[1m29 passed[0m[32m in 0.24s[0m[0m
+[?2004hroot@d338180ef8ce:/app# python - <<'PY'
+[?2004l[?2004h> import hashlib
+[?2004l[?2004h> import sqlite3
+[?2004l[?2004h> import subprocess
+[?2004l[?2004h> import sys
+[?2004l[?2004h> from pathlib import Path
+[?2004l[?2004h> 
+[?2004l[?2004h> path = Path('data/catalog.db')
+[?2004l[?2004h> before = hashlib.sha256(path.read_bytes()).hexdigest()
+[?2004l[?2004h> result = subprocess.run([sys.executable, 'sync.py'], check=True)
+[?2004l[?2004h> after = hashlib.sha256(path.read_bytes()).hexdigest()
+[?2004l[?2004h> assert before == after, 'second sync changed the database'
+[?2004l[?2004h> print('Second live sync left the database byte-for-byte unchanged:', after)
+[?2004l[?2004h> with sqlite3.connect(path) as conn:
+[?2004l[?2004h>     print('Products:', conn.execute('SELECT COUNT(*) FROM products').fetchone()[0])
+[?2004l[?2004h>     print('Tombstones:', conn.execute('SELECT COUNT(*) FROM tombstones').fetchone()[0])
+[?2004l[?2004h>     print('Currencies:', conn.execute('SELECT DISTINCT currency FROM products').fetchall())
+[?2004l[?2004h>     print('SQLite integrity:', conn.execute('PRAGMA integrity_check').fetchone()[0])
+[?2004l[?2004h> PY
+[?2004lWARNING sync: skipping SKU SUP-1015: 'call for price'
+INFO feed: feed answered 429, retrying in 1.0s
+WARNING sync: skipping SKU SUP-1021: JPY
+INFO feed: feed answered 429, retrying in 1.0s
+pages=3 upserted=0 deleted=0 skipped=2 unchanged=57
+Second live sync left the database byte-for-byte unchanged: a3431e1b92f36be2a139bad090769c6c839fca2dc82dc446b6d3419cad5f180d
+Products: 43
+Tombstones: 4
+Currencies: [('INR',)]
+SQLite integrity: ok
+[?2004hroot@d338180ef8ce:/app# 

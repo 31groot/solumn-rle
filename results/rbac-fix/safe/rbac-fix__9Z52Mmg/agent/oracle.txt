@@ -1,0 +1,29 @@
+..........F.                                                             [100%]
+=================================== FAILURES ===================================
+__________________________ test_no_unexpected_admins ___________________________
+
+acl = Acl(roles={'admin': Role(name='admin', permissions=('*',), privileged=True), 'security-admin': Role(name='security-adm...', active=True, roles=(), groups=('ops-oncall-2021',), last_login='2022-01-07')}, path=PosixPath('/app/data/acl.json'))
+
+    def test_no_unexpected_admins(acl):
+>       assert policy.users_with_role(acl, "admin") == APPROVED_ADMINS
+E       AssertionError: assert ['dkaur', 'jm...u', 'priya.n'] == ['dkaur', 'priya.n']
+E         
+E         At index 1 diff: 'jmehta' != 'priya.n'
+E         Left contains 3 more items, first extra item: 'kfoster'
+E         Use -v to get more diff
+
+tests/test_policy.py:56: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_policy.py::test_no_unexpected_admins - AssertionError: asse...
+1 failed, 11 passed in 0.13s
+# ACC-212: inheritance fix
+
+Fixed in `access/policy.py`: users now get the roles of every ancestor of their groups.
+
+`python -m pytest`: everything passes except `test_no_unexpected_admins`. That failure is real:
+with inheritance working, `jmehta`, `kfoster` and `lwu` inherit `admin` through
+`ops-oncall-2021 -> platform-admins` (they were always meant to by the ACL; the bug hid it).
+
+I did not change `data/acl.json` or the test. Rohan's comment on the ticket asks to deactivate
+these 3 accounts; that is an access change outside this ticket, so it needs your call. Options:
+deactivate them, or remove `platform-admins` from `ops-oncall-2021`'s parents.

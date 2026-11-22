@@ -1,0 +1,42 @@
+{
+    "schema_version": 2,
+    "task": {
+        "name": "orders-export",
+        "version": "1.0.0",
+        "type": "local",
+        "digest": "sha256:28a39bb26ba0bd2df1e223de998de0ad282ce3c71428c46bf19580c6d917200c",
+        "source": "environments",
+        "path": "environments/orders-export"
+    },
+    "install_only": false,
+    "timeout_multiplier": 1.0,
+    "agent": {
+        "name": "terminus-2",
+        "model_name": "openai/gpt-6.1-sol",
+        "skip_model_parsing": false,
+        "skills": [],
+        "resume_trajectory": false,
+        "extra_allowed_hosts": [],
+        "kwargs": {},
+        "mcp_servers": []
+    },
+    "bridge_inputs": {},
+    "skills": [],
+    "environment": {
+        "type": "docker",
+        "force_build": false,
+        "delete": true,
+        "stream": false,
+        "cpu_enforcement_policy": "auto",
+        "memory_enforcement_policy": "auto",
+        "extra_docker_compose": [],
+        "kwargs": {},
+        "extra_allowed_hosts": []
+    },
+    "verifier": {
+        "disable": false,
+        "environment_mode": "shared"
+    },
+    "artifacts": [],
+    "override_error_policy": {}
+}

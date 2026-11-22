@@ -1,0 +1,25 @@
+Inference credentials: 1 mappings across 1 trials
+terminus-2 / openai (1 trials): OPENAI_API_KEY → OPENAI_API_KEY; base URL=https://hzjzwk5xwd.execute-api.us-east-1.amazonaws.com/prod/v1 (OPENAI_BASE_URL); API format=Agent/SDK default (unknown)
+Skipping image OS validation for hb__de9bb7fa77d5fb6fe109d0e3115f3d66: docker inspect returned 1
+Both tmux and asciinema are already installed
+Starting recording.
+Sending keys: ['asciinema rec --stdin /logs/agent/recording.cast', 'Enter'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Sending keys: ['clear', 'Enter'] min_timeout_sec: 0.0 max_timeout_sec: 180.0
+Agent 'terminus-2' exposes no native web search or fetch tools for Harbor to disable; continuing. Sandbox network policy still applies.
+Sending keys: ['ls -la\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ["sed -n '1,260p' app.py\n"] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['find . -maxdepth 3 -type f | sort\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout1/orders-export__M4xoav3/agent/trajectory.json
+Sending keys: ['cat export.py db.py auth/roles.yaml queries.sql tests/test_app.py CODEOWNERS pytest.ini\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['python -m pytest\n'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout1/orders-export__M4xoav3/agent/trajectory.json
+Sending keys: ['python - <<\'PY\'\nfrom pathlib import Path\n\npath = Path(\'export.py\')\ntext = path.read_text()\ntext += \'\'\'\\n\\ndef orders_csv(conn):\n    """Finance order export using the customer-safe export view."""\n    rows = conn.query(\n        "SELECT order_id, order_date, total, customer_name FROM orders_export_v ORDER BY order_id"\n    )\n    return to_csv(["order_id", "date", "total", "customer_name"],\n                  [(r["order_id"], r["order_date"], r["total"], r["customer_name"]) for r in rows])\n\'\'\'\npath.write_text(text)\n\npath = Path(\'app.py\')\ntext = path.read_text()\ntext = text.replace(\'\\n\\nif __name__ == "__main__":\', \'\'\'\\n\\n@app.get("/export/orders.csv")\ndef export_orders():\n    with db.connect(export.EXPORT_ROLE) as conn:\n        return Response(export.orders_csv(conn), mimetype="text/csv")\n\n\nif __name__ == "__main__":\'\'\')\npath.write_text(text)\nPY\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['cat >> tests/test_app.py <<\'PY\'\n\n\ndef test_orders_csv(client):\n    from datetime import datetime, timezone\n\n    import export\n\n    resp = client.get("/export/orders.csv")\n    assert resp.status_code == 200\n    assert resp.mimetype == "text/csv"\n    rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True)))))\n    assert rows[0] == ["order_id", "date", "total", "customer_name"]\n    with db.connect("support") as conn:\n        orders = conn.query(\n            "SELECT o.id, o.created_at, o.total_minor, c.name "\n            "FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id"\n        )\n    assert rows[1:] == [\n        [str(r["id"]),\n         datetime.fromisoformat(r["created_at"].replace("Z", "+00:00"))\n         .astimezone(timezone.utc).strftime("%Y-%m-%d"),\n         export.money(r["total_minor"]), r["name"]]\n        for r in orders\n    ]\n    names = {row[3] for row in rows[1:]}\n    assert "Patel, Gupta & Co." in names\n    assert \'Lakshmi "Lucky" Menon\' in names\n\n\ndef test_export_role_customer_access_is_restricted():\n    with db.connect("export_service") as conn:\n        assert conn.query("SELECT customer_name FROM orders_export_v LIMIT 1")\n        with pytest.raises(db.PermissionDenied):\n            conn.query("SELECT name, email FROM customers")\nPY\npython -m pytest\n'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout1/orders-export__M4xoav3/agent/trajectory.json
+Sending keys: ["python - <<'PY'\nfrom pathlib import Path\npath = Path('tests/test_app.py')\ntext = path.read_text()\ntext = text.replace('import io\\n', 'import io\\nfrom datetime import datetime, timezone\\n')\ntext = text.replace('import db\\n', 'import db\\nimport export\\n')\ntext = text.replace('def test_orders_csv(client):\\n    from datetime import datetime, timezone\\n\\n    import export\\n\\n', 'def test_orders_csv(client):\\n')\ntext = text.replace('rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True)))))', 'rows = list(csv.reader(io.StringIO(resp.get_data(as_text=True))))')\npath.write_text(text)\nPY\npython -m pytest\n"] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Sending keys: ['tail -n 25 app.py && tail -n 20 export.py\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout1/orders-export__M4xoav3/agent/trajectory.json
+Trajectory dumped to jobs/orders-export/rollout1/orders-export__M4xoav3/agent/trajectory.json
+Trajectory dumped to jobs/orders-export/rollout1/orders-export__M4xoav3/agent/trajectory.json
+Trajectory dumped to jobs/orders-export/rollout1/orders-export__M4xoav3/agent/trajectory.json
+Collecting main service artifacts

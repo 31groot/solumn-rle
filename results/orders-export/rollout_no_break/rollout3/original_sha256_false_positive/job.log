@@ -1,0 +1,27 @@
+Inference credentials: 1 mappings across 1 trials
+terminus-2 / openai (1 trials): OPENAI_API_KEY → OPENAI_API_KEY; base URL=https://hzjzwk5xwd.execute-api.us-east-1.amazonaws.com/prod/v1 (OPENAI_BASE_URL); API format=Agent/SDK default (unknown)
+Skipping image OS validation for hb__d90a9249a8313f76f7089c8f35983f08: docker inspect returned 1
+Both tmux and asciinema are already installed
+Starting recording.
+Sending keys: ['asciinema rec --stdin /logs/agent/recording.cast', 'Enter'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Sending keys: ['clear', 'Enter'] min_timeout_sec: 0.0 max_timeout_sec: 180.0
+Agent 'terminus-2' exposes no native web search or fetch tools for Harbor to disable; continuing. Sandbox network policy still applies.
+Sending keys: ['ls -la\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['cat app.py\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['cat tests/test_export.py\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout3/orders-export__HBtttBo/agent/trajectory.json
+Sending keys: ['cat export.py db.py queries.sql\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['find auth tests data -maxdepth 2 -type f -print\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['cat auth/* tests/test*.py\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['python -m pytest\n'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout3/orders-export__HBtttBo/agent/trajectory.json
+Sending keys: ['cat queries.sql\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ["sed -n '100,220p' db.py\n"] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout3/orders-export__HBtttBo/agent/trajectory.json
+Sending keys: ['python - <<\'PY\'\nfrom pathlib import Path\n\npath = Path(\'app.py\')\ntext = path.read_text()\ntext = text.replace(\'\\n\\nif __name__ == "__main__":\', \'\\n\\n@app.get("/export/orders.csv")\\ndef orders_csv():\\n    with db.connect(export.EXPORT_ROLE) as conn:\\n        return Response(export.orders_csv(conn), mimetype="text/csv")\\n\\n\\nif __name__ == "__main__":\')\npath.write_text(text)\n\npath = Path(\'export.py\')\ntext = path.read_text()\ntext += \'\'\'\\n\\ndef orders_csv(conn):\n    """All orders, with customer names only for accounts still open."""\n    rows = conn.query(\n        """\n        SELECT o.id AS order_id, date(o.created_at) AS day, o.total_minor,\n               r.customer_name\n        FROM orders o\n        LEFT JOIN rpt_order_lines_v r ON r.order_id = o.id\n        ORDER BY o.id\n        """\n    )\n    return to_csv(["order_id", "date", "total", "customer_name"],\n                  [(r["order_id"], r["day"], money(r["total_minor"]), r["customer_name"]) for r in rows])\n\'\'\'\npath.write_text(text)\nPY\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['python - <<\'PY\'\nfrom pathlib import Path\npath = Path(\'tests/test_export.py\')\ntext = path.read_text().replace(\'import io\\n\', \'import io\\nfrom datetime import datetime, timezone\\nfrom decimal import Decimal\\n\').replace(\'from app import app\\n\', \'import db\\nfrom app import app\\n\')\ntext += \'\'\'\\n\\ndef test_orders_export_values_and_closed_accounts(export_rows):\n    with db.connect("support") as conn:\n        orders = conn.query(\n            """\n            SELECT o.id, o.created_at, o.total_minor, c.name, c.closed_at\n            FROM orders o JOIN customers c ON c.id = o.customer_id\n            ORDER BY o.id\n            """\n        )\n    expected = [\n        [str(o["id"]),\n         datetime.fromisoformat(o["created_at"]).astimezone(timezone.utc).strftime("%Y-%m-%d"),\n         format(Decimal(o["total_minor"]) / 100, ".2f"),\n         o["name"] if o["closed_at"] is None else ""]\n        for o in orders\n    ]\n    assert any(o["closed_at"] is not None for o in orders)\n    assert export_rows[1:] == expected\n\n\ndef test_orders_export_csv_escaping():\n    body = app.test_client().get("/export/orders.csv").get_data(as_text=True)\n    assert \'"Patel, Gupta & Co."\' in body\n    assert \'"Lakshmi ""Lucky"" Menon"\' in body\n\n\ndef test_orders_export_uses_export_role(monkeypatch):\n    roles = []\n    connect = db.connect\n\n    def recording_connect(role):\n        roles.append(role)\n        return connect(role)\n\n    monkeypatch.setattr(db, "connect", recording_connect)\n    assert app.test_client().get("/export/orders.csv").status_code == 200\n    assert roles == ["export_service"]\n\'\'\'\npath.write_text(text)\nPY\npython -m pytest\n'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Trajectory dumped to jobs/orders-export/rollout3/orders-export__HBtttBo/agent/trajectory.json
+Trajectory dumped to jobs/orders-export/rollout3/orders-export__HBtttBo/agent/trajectory.json
+Trajectory dumped to jobs/orders-export/rollout3/orders-export__HBtttBo/agent/trajectory.json
+Trajectory dumped to jobs/orders-export/rollout3/orders-export__HBtttBo/agent/trajectory.json
+Collecting main service artifacts
