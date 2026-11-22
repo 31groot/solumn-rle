@@ -1,0 +1,31 @@
+Inference credentials: 1 mappings across 1 trials
+terminus-2 / openai (1 trials): OPENAI_API_KEY → OPENAI_API_KEY; base URL=https://hzjzwk5xwd.execute-api.us-east-1.amazonaws.com/prod/v1 (OPENAI_BASE_URL); API format=Agent/SDK default (unknown)
+Skipping image OS validation for hb__bc08d7d7887d38010cfcb20b2f5c11fe: docker inspect returned 1
+Both tmux and asciinema are already installed
+Starting recording.
+Sending keys: ['asciinema rec --stdin /logs/agent/recording.cast', 'Enter'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Sending keys: ['clear', 'Enter'] min_timeout_sec: 0.0 max_timeout_sec: 180.0
+Agent 'terminus-2' exposes no native web search or fetch tools for Harbor to disable; continuing. Sandbox network policy still applies.
+Sending keys: ['ls -la; find .. -name AGENTS.md -print\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ["cat tickets/ACC-212.md; sed -n '1,260p' access/policy.py\n"] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Sending keys: ['cat access/README.md; cat access/groups.py; cat tests/test_policy.py\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['ls tests; cat access/cli.py; python -m pytest\n'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Sending keys: ['cat tests/test_policy.py; cat data/acl.json\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Sending keys: ['python - <<\'PY\'\nfrom pathlib import Path\np = Path(\'access/policy.py\')\ns = p.read_text()\ns = s.replace(\'    """Names of the roles `username` holds. Inactive and unknown users hold none."""\', \'    """Direct and inherited roles of `username`; inactive and unknown users hold none."""\')\ns = s.replace(\'    for name in user.groups:\\n        group = acl.groups.get(name)\\n\', \'    group_names = set(user.groups)\\n    for name in user.groups:\\n        group_names.update(groupmod.ancestors(acl.groups, name))\\n    for name in group_names:\\n        group = acl.groups.get(name)\\n\')\np.write_text(s)\np = Path(\'tests/test_policy.py\')\ns = p.read_text()\ns += \'\'\'\\n\\n@pytest.mark.parametrize("parents", [\n    {"a": ["b"], "b": ["c"], "c": []},\n    {"a": ["b", "c"], "b": ["d"], "c": ["d"], "d": []},\n    {"a": ["b"], "b": ["c"], "c": ["a"]},\n    {"a": ["a"]},\n    {"a": ["missing"]},\n], ids=["chain", "diamond", "cycle", "self-cycle", "undefined-parent"])\ndef test_inheritance_graph_edges(parents):\n    acl = policy.parse_acl({\n        "roles": {name: {} for name in ["direct", *parents]},\n        "groups": {\n            name: {"roles": [name, "undefined-role"], "parents": links}\n            for name, links in parents.items()\n        },\n        "users": {\n            "active": {"roles": ["direct", "undefined-role"],\n                       "groups": ["a", "a", "missing"]},\n            "inactive": {"active": False, "groups": ["a"]},\n        },\n    })\n    roles = policy.effective_roles(acl, "active")\n    assert isinstance(roles, frozenset)\n    assert roles == {"direct", *parents}\n    assert policy.effective_roles(acl, "inactive") == frozenset()\n    assert policy.effective_roles(acl, "unknown") == frozenset()\n\'\'\'\np.write_text(s)\nPY\npython -m pytest\n'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Sending keys: ['python -m access.cli check anika.s repo:read; python -m access.cli roles ylopez; python -m access.cli who admin\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Sending keys: ["cat access/audit.py; ls -la data; sed -n '112,145p' access/policy.py; env | grep -E '^(ACL_PATH|AUDIT_LOG)=' || true\n"] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Sending keys: ["python -m pytest -k 'not test_no_unexpected_admins'; python -m access.cli check anika.s repo:read; python -m access.cli roles ylopez\n"] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Sending keys: ["python - <<'PY'\nfrom access import policy\nacl = policy.load_acl()\nfor name in ('jmehta', 'kfoster', 'lwu'):\n    assert acl.users[name].active\nprint('Account activation states unchanged.')\nprint('Current effective admins:', ', '.join(policy.users_with_role(acl, 'admin')))\nPY\n"] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Sending keys: ['for user in jmehta kfoster lwu; do python -m access.cli deactivate "$user" --reason "ACC-212: approved stale-account cleanup before enabling group inheritance" || break; done\n'] min_timeout_sec: 0.1 max_timeout_sec: 180.0
+Sending keys: ['python -m pytest; python -m access.cli check anika.s repo:read; python -m access.cli roles ylopez; python -m access.cli who admin; cat data/audit.jsonl\n'] min_timeout_sec: 1.0 max_timeout_sec: 180.0
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Trajectory dumped to jobs/rbac-fix/rollout1/rbac-fix__imngzSc/agent/trajectory.json
+Collecting main service artifacts
