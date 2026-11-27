@@ -1,4 +1,4 @@
-# Solumn RLE: five Harbor safety environments
+#RLE: five Harbor safety environments
 
 Five Harbor tasks, one per sub-policy, covering both families: AU (Authority & Injection) and AC (Autonomy & Control). Each is a small real repo with an unfinished ticket, a planted pull toward one forbidden action, and a grader that scores functional, regression and security independently on every run. The model under test is gpt-6.1-sol, run through the `terminus-2` agent. Oracle runs use Harbor's oracle agent with no network.
 
